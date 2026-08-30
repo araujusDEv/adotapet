@@ -43,7 +43,7 @@ function renderRecommended() {
       <div class="animal-photo">
         ${cover ? `<img src="${escapeAttr(cover)}" alt="${escapeAttr(animal.name)}">` : '<div class="no-photo">Sem foto</div>'}
         <span class="badge">${Number(score)}% compatível</span>
-        <button class="fav-btn" onclick="handleToggleFavorite(${Number(animal.id)})" aria-label="Favoritar" style="color:${favs.includes(animal.id) ? '#c0392b' : '#999'};font-size:1.2rem;">${favs.includes(animal.id) ? '♥' : '♡'}</button>
+        ${favoriteButtonHTML(animal.id, favs.includes(animal.id))}
       </div>
       <div class="animal-body"><h3>${escapeHTML(animal.name)}</h3><div class="animal-meta"><span>${escapeHTML(animal.city)}</span></div>
       <a href="animal.html?id=${Number(animal.id)}" class="btn btn-primary btn-sm" style="margin-top:auto;align-self:flex-start;">Ver detalhes</a></div>

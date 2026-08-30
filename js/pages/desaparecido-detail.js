@@ -10,6 +10,7 @@ function renderMissingDetail() {
   const user = Auth.getCurrentUser();
   const canManage = Boolean(user && (user.role === 'admin' || Number(animal.ownerId) === user.id));
   const photo = safeImageSrc(animal.photo);
+  setRecordMetadata(`${animal.name || 'Animal desaparecido'} · AdotaPet`, `${animal.name || 'Animal'} ${animal.found ? 'encontrado' : 'desaparecido'} em ${animal.city || 'nossa região'}. Veja as informações no AdotaPet.`, photo);
   let sightings = [];
   if (canManage) {
     try { sightings = Store.getSightings().filter(s => s.missingAnimalId === animal.id); } catch { sightings = []; }
@@ -63,10 +64,10 @@ function renderMissingDetail() {
           <form class="form-card" style="padding:24px;margin:0;" id="sighting-form">
             <h3 style="font-size:1.05rem;">Informar um avistamento</h3>
             <div id="sighting-alert"></div>
-            <div class="form-field"><label>Seu nome (opcional)</label><input id="s-name"></div>
-            <div class="form-field"><label>Seu contato (opcional)</label><input id="s-contact"></div>
-            <div class="form-field"><label>Local onde viu o animal</label><input id="s-location" required></div>
-            <div class="form-field"><label>Detalhes</label><textarea rows="3" id="s-message"></textarea></div>
+            <div class="form-field"><label for="s-name">Seu nome (opcional)</label><input id="s-name"></div>
+            <div class="form-field"><label for="s-contact">Seu contato (opcional)</label><input id="s-contact"></div>
+            <div class="form-field"><label for="s-location">Local onde viu o animal</label><input id="s-location" required></div>
+            <div class="form-field"><label for="s-message">Detalhes</label><textarea rows="3" id="s-message"></textarea></div>
             <button class="btn btn-primary" type="submit">Enviar avistamento</button>
           </form>`}
         </div>

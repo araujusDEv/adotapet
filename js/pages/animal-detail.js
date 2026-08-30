@@ -16,6 +16,7 @@ function renderAnimalDetail(trackView = true) {
 
   const owner = Store.getUsers().find(u => u.id === animal.ownerId);
   const photos = Array.isArray(animal.photos) ? animal.photos.map(safeImageSrc).filter(Boolean) : [];
+  setRecordMetadata(`${animal.name} · AdotaPet`, `${animal.name} em ${animal.city}. ${animal.description || 'Conheça este animal no AdotaPet.'}`, photos[0]);
   currentAnimalPhotos = photos;
   currentAnimalName = animal.name || 'Animal';
   const ageLabel = { filhote: 'Filhote', adulto: 'Adulto', idoso: 'Idoso' }[animal.age_group] || animal.age_group || 'Não informado';
@@ -46,13 +47,13 @@ function renderAnimalDetail(trackView = true) {
       <div>
         <div class="gallery-main" id="gallery-main" style="position:relative;">
           ${photos[0] ? `<img src="${escapeAttr(photos[0])}" alt="${escapeAttr(animal.name)}" style="width:100%;height:100%;object-fit:cover;">` : '<div class="no-photo">Sem foto</div>'}
-          <button class="fav-btn" onclick="handleToggleFavorite(${Number(animal.id)})" aria-label="Favoritar" style="color:${isFav ? '#c0392b' : '#999'};font-size:1.2rem;">${isFav ? '♥' : '♡'}</button>
+          ${favoriteButtonHTML(animal.id, isFav)}
         </div>
         ${photos.length > 1 ? `<div class="gallery-thumbs">${photos.map((p, i) => `<img src="${escapeAttr(p)}" alt="Foto de ${escapeAttr(animal.name)}" class="${i === 0 ? 'active' : ''}" onclick="setActivePhoto(${i})">`).join('')}</div>` : ''}
       </div>
       <div>
         <span class="eyebrow">${animal.species === 'cachorro' ? 'Cão' : 'Gato'} · ${escapeHTML(animal.city)}/${escapeHTML(animal.state)}${animal.neighborhood ? ' — ' + escapeHTML(animal.neighborhood) : ''}</span>
-        <h1>${escapeHTML(animal.name)} ${animal.verified ? '<span class="tag" style="background:var(--color-primary);color:#fff;" title="Dados conferidos pela administração">✓ Anúncio verificado</span>' : ''} ${animal.featured ? '<span class="tag" style="background:#E8A33D;color:#fff;">★ Destaque</span>' : ''}</h1>
+        <h1>${escapeHTML(animal.name)} ${animal.verified ? '<span class="tag" title="Dados conferidos pela administração">' + svgIcon('shield-check') + ' Anúncio verificado</span>' : ''} ${animal.featured ? '<span class="tag">' + svgIcon('star') + ' Destaque</span>' : ''}</h1>
         <div class="tag-row">
           <span class="tag">${animal.sex === 'macho' ? 'Macho' : 'Fêmea'}</span>
           <span class="tag">${escapeHTML(ageLabel)}</span>
@@ -101,10 +102,10 @@ function renderAnimalDetail(trackView = true) {
     const area = document.getElementById('report-area');
     area.innerHTML = `
       <form class="form-card" style="padding:18px;margin:0;" id="report-form">
-        <div class="form-field"><label>Motivo da denúncia</label><select id="rp-category">
+        <div class="form-field"><label for="rp-category">Motivo da denúncia</label><select id="rp-category">
           ${Object.entries(REPORT_CATEGORY_LABEL).map(([k, v]) => `<option value="${escapeAttr(k)}">${escapeHTML(v)}</option>`).join('')}
         </select></div>
-        <div class="form-field"><label>Detalhes</label><textarea rows="2" id="rp-details" required></textarea></div>
+        <div class="form-field"><label for="rp-details">Detalhes</label><textarea rows="2" id="rp-details" required></textarea></div>
         <button class="btn btn-danger btn-sm" type="submit">Enviar denúncia</button>
       </form>`;
     document.getElementById('report-form').addEventListener('submit', (e) => {
@@ -158,27 +159,27 @@ function showInterestForm(animal) {
       <h3 style="font-size:1.1rem;">Formulário de interesse</h3>
       <div id="interest-alert"></div>
       <div class="form-row">
-        <div class="form-field"><label>Nome completo</label><input required id="i-name" value="${escapeAttr(user.name)}"></div>
-        <div class="form-field"><label>Idade</label><input type="number" min="18" max="120" id="i-age"></div>
+        <div class="form-field"><label for="i-name">Nome completo</label><input required id="i-name" value="${escapeAttr(user.name)}"></div>
+        <div class="form-field"><label for="i-age">Idade</label><input type="number" min="18" max="120" id="i-age"></div>
       </div>
-      <div class="form-field"><label>Cidade onde mora</label><input id="i-city" value="${escapeAttr(user.city || '')}" required></div>
-      <div class="form-field"><label>Tipo de moradia</label><select id="i-housing">
+      <div class="form-field"><label for="i-city">Cidade onde mora</label><input id="i-city" value="${escapeAttr(user.city || '')}" required></div>
+      <div class="form-field"><label for="i-housing">Tipo de moradia</label><select id="i-housing">
         <option value="casa">Casa</option><option value="apartamento">Apartamento</option><option value="sitio">Sítio / Chácara</option>
       </select></div>
       <div class="checkbox-row"><input type="checkbox" id="i-yard"><label for="i-yard">Possui quintal</label></div>
       <div class="checkbox-row"><input type="checkbox" id="i-pets"><label for="i-pets">Possui outros animais</label></div>
       <div class="checkbox-row"><input type="checkbox" id="i-exp"><label for="i-exp">Já teve experiência com pets</label></div>
-      <div class="form-field"><label>Motivo da adoção</label><textarea rows="3" id="i-reason" required></textarea></div>
+      <div class="form-field"><label for="i-reason">Motivo da adoção</label><textarea rows="3" id="i-reason" required></textarea></div>
 
       <h3 style="font-size:1.05rem;margin-top:22px;">Questionário de adoção responsável</h3>
-      <div class="form-field"><label>Todos os moradores concordam com a adoção?</label><select id="q-agree" required><option value="sim">Sim</option><option value="nao">Não</option></select></div>
-      <div class="form-field"><label>Possui condições financeiras para alimentação e cuidados veterinários?</label><select id="q-financial" required><option value="sim">Sim</option><option value="nao">Não</option></select></div>
-      <div class="form-field"><label>O animal ficará sozinho por quanto tempo, em média?</label><select id="q-alone" required>
+      <div class="form-field"><label for="q-agree">Todos os moradores concordam com a adoção?</label><select id="q-agree" required><option value="sim">Sim</option><option value="nao">Não</option></select></div>
+      <div class="form-field"><label for="q-financial">Possui condições financeiras para alimentação e cuidados veterinários?</label><select id="q-financial" required><option value="sim">Sim</option><option value="nao">Não</option></select></div>
+      <div class="form-field"><label for="q-alone">O animal ficará sozinho por quanto tempo, em média?</label><select id="q-alone" required>
         <option value="menos_2h">Menos de 2 horas</option><option value="2_4h">2 a 4 horas</option><option value="4_8h">4 a 8 horas</option><option value="mais_8h">Mais de 8 horas</option>
       </select></div>
-      <div class="form-field"><label>Já teve animais anteriormente?</label><select id="q-had-pets"><option value="sim">Sim</option><option value="nao">Não</option></select></div>
-      <div class="form-field"><label>Está disposto(a) a manter vacinação e acompanhamento veterinário?</label><select id="q-vet" required><option value="sim">Sim</option><option value="nao">Não</option></select></div>
-      <div class="form-field"><label>O que fará caso tenha dificuldades de adaptação?</label><textarea rows="2" id="q-adaptation" required></textarea></div>
+      <div class="form-field"><label for="q-had-pets">Já teve animais anteriormente?</label><select id="q-had-pets"><option value="sim">Sim</option><option value="nao">Não</option></select></div>
+      <div class="form-field"><label for="q-vet">Está disposto(a) a manter vacinação e acompanhamento veterinário?</label><select id="q-vet" required><option value="sim">Sim</option><option value="nao">Não</option></select></div>
+      <div class="form-field"><label for="q-adaptation">O que fará caso tenha dificuldades de adaptação?</label><textarea rows="2" id="q-adaptation" required></textarea></div>
       <div class="checkbox-row" style="align-items:flex-start;margin:14px 0;"><input type="checkbox" id="q-declaration" required style="margin-top:4px;"><label for="q-declaration">Declaro estar ciente de que a adoção é um compromisso de longo prazo e que o animal não deve ser abandonado.</label></div>
       <button class="btn btn-primary" type="submit">Enviar solicitação</button>
     </form>`;

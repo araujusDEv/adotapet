@@ -4,16 +4,15 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Cadastrar desaparecido · AdotaPet</title>
-<link rel="icon" href="img/logo-icon.png">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css">
+<link rel="icon" href="img/brand-symbol.png">
+<link rel="stylesheet" href="css/style.css?v=20260830-visual1">
+<link rel="stylesheet" href="css/visual.css?v=20260830-visual1">
 </head>
 <body>
   <a href="#main" class="skip-link">Pular para o conteúdo</a>
   <header class="navbar">
     <div class="container navbar-inner">
-      <a href="index.html" class="logo"><span class="logo-mark"><img src="img/logo-icon.png" alt="AdotaPet"></span> AdotaPet</a>
+      <a href="index.html" class="logo" aria-label="AdotaPet — início"><span class="logo-mark"><img src="img/brand-symbol.png" alt="" width="56" height="56"></span><span class="brand-word"><span class="brand-adota">Adota</span><span class="brand-pet">Pet</span></span></a>
       <nav class="nav-links" id="nav-links">
         <a href="index.html">Início</a>
         <a href="adotar.html">Quero Adotar</a>
@@ -37,31 +36,31 @@
     <div id="alert-area"></div>
     <form id="missing-form">
       <div class="form-row">
-        <div class="form-field"><label>Nome do animal (se souber)</label><input id="m-name"></div>
+        <div class="form-field"><label for="m-name">Nome do animal (se souber)</label><input id="m-name"></div>
         <div class="form-field">
-          <label>Espécie</label>
+          <label for="m-species">Espécie</label>
           <select id="m-species"><option value="cachorro">Cachorro</option><option value="gato">Gato</option></select>
         </div>
       </div>
       <div class="form-row">
-        <div class="form-field"><label>Raça</label><input id="m-breed"></div>
-        <div class="form-field"><label>Cor</label><input id="m-color"></div>
+        <div class="form-field"><label for="m-breed">Raça</label><input id="m-breed"></div>
+        <div class="form-field"><label for="m-color">Cor</label><input id="m-color"></div>
       </div>
       <div class="form-row">
-        <div class="form-field"><label>Idade aproximada</label><input id="m-age"></div>
-        <div class="form-field"><label>Data do desaparecimento</label><input type="date" required id="m-date"></div>
+        <div class="form-field"><label for="m-age">Idade aproximada</label><input id="m-age"></div>
+        <div class="form-field"><label for="m-date">Data do desaparecimento</label><input type="date" required id="m-date"></div>
       </div>
-      <div class="form-field"><label>Características específicas</label><textarea rows="2" id="m-features"></textarea></div>
-      <div class="form-field"><label>Local onde foi visto pela última vez</label><input id="m-location"></div>
+      <div class="form-field"><label for="m-features">Características específicas</label><textarea rows="2" id="m-features"></textarea></div>
+      <div class="form-field"><label for="m-location">Local onde foi visto pela última vez</label><input id="m-location"></div>
       <div class="form-row">
-        <div class="form-field"><label>Cidade</label><input required id="m-city"></div>
-        <div class="form-field"><label>Estado</label><input required id="m-state"></div>
+        <div class="form-field"><label for="m-city">Cidade</label><input required id="m-city"></div>
+        <div class="form-field"><label for="m-state">Estado</label><input required id="m-state"></div>
       </div>
       <div class="form-row">
-        <div class="form-field"><label>Contato</label><input required id="m-contact"></div>
-        <div class="form-field"><label>Recompensa (opcional)</label><input id="m-reward"></div>
+        <div class="form-field"><label for="m-contact">Contato</label><input required id="m-contact"></div>
+        <div class="form-field"><label for="m-reward">Recompensa (opcional)</label><input id="m-reward"></div>
       </div>
-      <div class="form-field"><label>Foto (JPG/PNG/WebP, máximo 2 MB)</label><input type="file" accept="image/jpeg,image/png,image/webp" id="m-photo"></div>
+      <div class="form-field"><label for="m-photo">Foto (JPG/PNG/WebP, máximo 2 MB)</label><input type="file" accept="image/jpeg,image/png,image/webp" id="m-photo"></div>
       <button class="btn btn-danger" type="submit" style="width:100%;">Publicar alerta de desaparecimento</button>
     </form>
   </div>
@@ -71,7 +70,7 @@
     <div class="container">
       <div class="footer-grid">
         <div>
-          <div class="footer-logo"><img src="img/logo-full.png" alt="AdotaPet"></div>
+          <div class="footer-logo"><a href="index.html" class="logo" aria-label="AdotaPet — início"><span class="logo-mark"><img src="img/brand-symbol.png" alt="" width="56" height="56"></span><span class="brand-word"><span class="brand-adota">Adota</span><span class="brand-pet">Pet</span></span></a></div>
           <p style="color:#EAF3EF;opacity:.85;font-size:.9rem;">Plataforma de adoção de animais desenvolvida por estudantes da Escola Estadual Professor Antônio Dantas, em Apodi/RN.</p>
         </div>
         <div>
@@ -97,7 +96,8 @@
   </footer>
 <script src="js/store.js"></script>
 <script src="js/auth.js"></script>
-<script src="js/nav.js"></script>
+<script src="js/icons.js?v=20260830-visual1"></script>
+<script src="js/nav.js?v=20260830-visual1"></script>
 <script src="js/pages/cadastrar-desaparecido.js"></script>
 </body>
 </html>

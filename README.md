@@ -1,5 +1,7 @@
 # AdotaPet — versão com Back-end + SQLite
 
+> Novo visual de 30/08/2026: veja **NOVO_VISUAL_LEIA_PRIMEIRO.md** para conhecer a identidade visual, os testes desta atualização e como substituir os arquivos preservando as pastas.
+
 Esta versão do projeto usa **HTML, CSS e JavaScript no front-end** e um **servidor Node.js com banco de dados SQLite** no back-end.
 
 Diferente da versão anterior, os cadastros não ficam mais presos ao `localStorage` de um navegador. Usuários, animais, solicitações, desaparecidos, avistamentos, favoritos, denúncias, histórias e notificações são persistidos no arquivo `data/adotapet.db`.

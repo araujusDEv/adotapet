@@ -26,7 +26,7 @@ function renderMinhasSolicitacoes() {
       ? `<div class="alert alert-error">${escapeHTML(REQUEST_STATUS[r.status] || r.status)}</div>`
       : `<div class="request-stepper">${steps.map((s, i) => `
           <div class="request-step ${i <= currentIdx ? 'done' : ''}">
-            <span class="request-step-dot">${i < currentIdx || (r.stage === 'concluida' && i <= currentIdx) ? '✓' : (i === currentIdx ? '●' : '○')}</span>
+            <span class="request-step-dot">${i < currentIdx || (r.stage === 'concluida' && i <= currentIdx) ? svgIcon('check') : svgIcon('circle', i === currentIdx ? 'is-current' : '')}</span>
             <span>${s.label}</span>
           </div>`).join('')}</div>`;
 
@@ -47,7 +47,7 @@ function renderMinhasSolicitacoes() {
         const dueAt = new Date(new Date(r.acceptedAt).getTime() + day * 86400000);
         const due = Date.now() >= dueAt.getTime();
         return `<div class="followup-step ${done ? 'done' : ''}" id="followup-step-${Number(r.id)}-${day}">
-          <b>${day} dias ${done ? '✓' : ''}</b>
+          <b>${day} dias ${done ? svgIcon('check') : ''}</b>
           <span>${done ? `Enviado em ${new Date(done.createdAt).toLocaleDateString('pt-BR')}` : due ? 'Disponível agora' : `Disponível em ${dueAt.toLocaleDateString('pt-BR')}`}</span>
           ${!done && due ? `<button class="btn btn-outline btn-sm" onclick="showFollowupForm(${Number(r.id)}, ${day})">Responder</button>` : ''}
         </div>`;

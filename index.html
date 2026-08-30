@@ -4,16 +4,25 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Início · AdotaPet</title>
-<link rel="icon" href="img/logo-icon.png">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css">
+<meta name="description" content="Cada patinha merece um segundo lar. Encontre animais para adoção, divulgue desaparecidos e acompanhe uma adoção responsável em Apodi e região.">
+<meta property="og:title" content="AdotaPet — Cada patinha merece um segundo lar.">
+<meta property="og:description" content="Adoção responsável, novos encontros e uma comunidade que cuida. Conheça o AdotaPet.">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://adotapet-oc7y.onrender.com/img/social-preview.png">
+<meta property="og:image:alt" content="AdotaPet — Cada patinha merece um segundo lar.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="AdotaPet — Cada patinha merece um segundo lar.">
+<meta name="twitter:description" content="Adoção responsável, novos encontros e uma comunidade que cuida.">
+<meta name="twitter:image" content="https://adotapet-oc7y.onrender.com/img/social-preview.png">
+<link rel="icon" href="img/brand-symbol.png">
+<link rel="stylesheet" href="css/style.css?v=20260830-visual1">
+<link rel="stylesheet" href="css/visual.css?v=20260830-visual1">
 </head>
 <body>
   <a href="#main" class="skip-link">Pular para o conteúdo</a>
   <header class="navbar">
     <div class="container navbar-inner">
-      <a href="index.html" class="logo"><span class="logo-mark"><img src="img/logo-icon.png" alt="AdotaPet"></span> AdotaPet</a>
+      <a href="index.html" class="logo" aria-label="AdotaPet — início"><span class="logo-mark"><img src="img/brand-symbol.png" alt="" width="56" height="56"></span><span class="brand-word"><span class="brand-adota">Adota</span><span class="brand-pet">Pet</span></span></a>
       <nav class="nav-links" id="nav-links">
         <a href="index.html">Início</a>
         <a href="adotar.html">Quero Adotar</a>
@@ -29,32 +38,38 @@
     </div>
   </header>
 <main id="main">
-<section class="hero">
+<section class="hero home-hero">
+  <span class="hero-paw hero-paw-left" data-icon="paw" aria-hidden="true"></span>
+  <span class="hero-paw hero-paw-right" data-icon="paw" aria-hidden="true"></span>
   <div class="container hero-grid">
-    <div>
-      <span class="eyebrow">Adoção responsável</span>
-      <h1 class="hero-title">Cada patinha merece um <span class="accent">segundo lar</span>.</h1>
-      <p style="font-size:1.05rem;max-width:480px;">O AdotaPet reúne animais disponíveis para adoção e avisos de animais desaparecidos em Apodi e cidades da região, aproximando adotantes, doadores e protetores.</p>
+    <div class="hero-copy">
+      <span class="eyebrow hero-eyebrow"><span data-icon="paw" class="icon-filled"></span>Adoção responsável</span>
+      <h1 class="hero-title">Cada patinha<br>merece<br>um <span class="accent">segundo lar</span>.</h1>
+      <p class="hero-description">O AdotaPet reúne animais disponíveis para adoção e avisos de animais desaparecidos em Apodi e cidades da região, aproximando adotantes, doadores e protetores.</p>
       <div class="hero-actions">
-        <a href="adotar.html" class="btn btn-primary">Quero adotar</a>
-        <a href="cadastrar-animal.html" class="btn btn-outline">Cadastrar um animal</a>
+        <a href="adotar.html" class="btn btn-primary"><span data-icon="paw" class="icon-filled"></span>Quero adotar</a>
+        <a href="cadastrar-animal.html" class="btn btn-outline"><span data-icon="plus"></span>Cadastrar um animal</a>
       </div>
     </div>
     <div class="hero-media">
-      <div class="hero-blob"></div>
-      <img src="https://images.unsplash.com/photo-1601758228041-f3b2795255f1?w=900&q=80" alt="Cão feliz aguardando adoção">
+      <img src="img/hero-adocao.jpg" alt="Cachorro brincando com seus brinquedos em casa" width="1400" height="2098" fetchpriority="high">
+      <div class="hero-message"><span class="hero-message-icon" data-icon="heart"></span><span>Transforme uma vida.<br>Adote amor.</span></div>
     </div>
   </div>
 </section>
 
-<section class="section">
-  <div class="container stats-strip">
-    <div class="stat"><b id="stat-animais">0</b><span>Animais disponíveis</span></div>
-    <div class="stat"><b id="stat-adocoes">0</b><span>Adoções realizadas</span></div>
-    <div class="stat"><b id="stat-usuarios">0</b><span>Usuários cadastrados</span></div>
-    <div class="stat"><b id="stat-ongs">0</b><span>Doadores e protetores</span></div>
+<section class="home-impact" aria-label="O impacto da nossa comunidade">
+  <div class="container">
+    <div class="impact-shell">
+      <div class="stats-strip">
+        <div class="stat"><span class="stat-icon" data-icon="paw"></span><div><b id="stat-animais">0</b><span>Animais<br>disponíveis</span></div></div>
+        <div class="stat"><span class="stat-icon" data-icon="heart"></span><div><b id="stat-adocoes">0</b><span>Adoções<br>realizadas</span></div></div>
+        <div class="stat"><span class="stat-icon" data-icon="users"></span><div><b id="stat-usuarios">0</b><span>Usuários<br>cadastrados</span></div></div>
+        <div class="stat"><span class="stat-icon" data-icon="shield"></span><div><b id="stat-ongs">0</b><span>Doadores e<br>protetores</span></div></div>
+      </div>
+      <a href="transparencia.html" class="btn btn-outline impact-link"><span data-icon="arrow-up-right"></span>Ver dados de impacto e transparência</a>
+    </div>
   </div>
-  <p style="text-align:center;margin-top:18px;"><a href="transparencia.html" class="btn btn-outline btn-sm">Ver dados de impacto e transparência</a></p>
 </section>
 
 <section class="section section-alt">
@@ -88,7 +103,7 @@
 </section>
 
 <section class="section">
-  <div class="container" style="display:grid;grid-template-columns:1fr 1fr;gap:40px;">
+  <div class="container purpose-grid">
     <div>
       <span class="eyebrow">Objetivo</span>
       <h2>Reduzir o abandono de animais em Apodi e região</h2>
@@ -110,7 +125,7 @@
     <div class="container">
       <div class="footer-grid">
         <div>
-          <div class="footer-logo"><img src="img/logo-full.png" alt="AdotaPet"></div>
+          <div class="footer-logo"><a href="index.html" class="logo" aria-label="AdotaPet — início"><span class="logo-mark"><img src="img/brand-symbol.png" alt="" width="56" height="56"></span><span class="brand-word"><span class="brand-adota">Adota</span><span class="brand-pet">Pet</span></span></a></div>
           <p style="color:#EAF3EF;opacity:.85;font-size:.9rem;">Plataforma de adoção de animais desenvolvida por estudantes da Escola Estadual Professor Antônio Dantas, em Apodi/RN.</p>
         </div>
         <div>
@@ -136,7 +151,8 @@
   </footer>
 <script src="js/store.js"></script>
 <script src="js/auth.js"></script>
-<script src="js/nav.js"></script>
+<script src="js/icons.js?v=20260830-visual1"></script>
+<script src="js/nav.js?v=20260830-visual1"></script>
 <script src="js/cards.js"></script>
 <script src="js/pages/home.js"></script>
 </body>

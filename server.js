@@ -736,7 +736,8 @@ async function handleApi(req, res, url) {
 
 const MIME = {
   '.html':'text/html; charset=utf-8', '.js':'text/javascript; charset=utf-8', '.css':'text/css; charset=utf-8',
-  '.png':'image/png', '.jpg':'image/jpeg', '.jpeg':'image/jpeg', '.svg':'image/svg+xml', '.ico':'image/x-icon', '.json':'application/json; charset=utf-8'
+  '.png':'image/png', '.jpg':'image/jpeg', '.jpeg':'image/jpeg', '.svg':'image/svg+xml', '.ico':'image/x-icon', '.json':'application/json; charset=utf-8',
+  '.woff2':'font/woff2', '.woff':'font/woff', '.ttf':'font/ttf'
 };
 function serveStatic(req, res, url) {
   let rel = decodeURIComponent(url.pathname);
@@ -760,7 +761,7 @@ function serveStatic(req, res, url) {
       'Content-Type': MIME[ext] || 'application/octet-stream',
       'X-Content-Type-Options':'nosniff',
       'Referrer-Policy':'same-origin',
-      'Cache-Control': ext === '.html' || ext === '.js' ? 'no-cache' : 'public, max-age=3600'
+      'Cache-Control': ['.html', '.js', '.css'].includes(ext) ? 'no-cache' : 'public, max-age=3600'
     });
     if (req.method === 'HEAD') return res.end();
     fs.createReadStream(target).pipe(res);

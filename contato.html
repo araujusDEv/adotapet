@@ -4,16 +4,15 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Contato · AdotaPet</title>
-<link rel="icon" href="img/logo-icon.png">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css">
+<link rel="icon" href="img/brand-symbol.png">
+<link rel="stylesheet" href="css/style.css?v=20260830-visual1">
+<link rel="stylesheet" href="css/visual.css?v=20260830-visual1">
 </head>
 <body>
   <a href="#main" class="skip-link">Pular para o conteúdo</a>
   <header class="navbar">
     <div class="container navbar-inner">
-      <a href="index.html" class="logo"><span class="logo-mark"><img src="img/logo-icon.png" alt="AdotaPet"></span> AdotaPet</a>
+      <a href="index.html" class="logo" aria-label="AdotaPet — início"><span class="logo-mark"><img src="img/brand-symbol.png" alt="" width="56" height="56"></span><span class="brand-word"><span class="brand-adota">Adota</span><span class="brand-pet">Pet</span></span></a>
       <nav class="nav-links" id="nav-links">
         <a href="index.html">Início</a>
         <a href="adotar.html">Quero Adotar</a>
@@ -29,7 +28,7 @@
     </div>
   </header>
 <main id="main">
-<div class="container section" style="display:grid;grid-template-columns:1fr 1fr;gap:40px;">
+<div class="container section purpose-grid">
   <div>
     <span class="eyebrow">Contato</span>
     <h1>Fale com a gente</h1>
@@ -41,9 +40,9 @@
   </div>
   <div class="form-card" style="margin:0;" id="contact-wrapper">
     <form id="contact-form">
-      <div class="form-field"><label>Nome</label><input required id="c-name"></div>
-      <div class="form-field"><label>E-mail</label><input type="email" required id="c-email"></div>
-      <div class="form-field"><label>Mensagem</label><textarea rows="4" required id="c-message"></textarea></div>
+      <div class="form-field"><label for="c-name">Nome</label><input required id="c-name"></div>
+      <div class="form-field"><label for="c-email">E-mail</label><input type="email" required id="c-email"></div>
+      <div class="form-field"><label for="c-message">Mensagem</label><textarea rows="4" required id="c-message"></textarea></div>
       <button class="btn btn-primary" type="submit" style="width:100%;">Enviar mensagem</button>
     </form>
   </div>
@@ -53,7 +52,7 @@
     <div class="container">
       <div class="footer-grid">
         <div>
-          <div class="footer-logo"><img src="img/logo-full.png" alt="AdotaPet"></div>
+          <div class="footer-logo"><a href="index.html" class="logo" aria-label="AdotaPet — início"><span class="logo-mark"><img src="img/brand-symbol.png" alt="" width="56" height="56"></span><span class="brand-word"><span class="brand-adota">Adota</span><span class="brand-pet">Pet</span></span></a></div>
           <p style="color:#EAF3EF;opacity:.85;font-size:.9rem;">Plataforma de adoção de animais desenvolvida por estudantes da Escola Estadual Professor Antônio Dantas, em Apodi/RN.</p>
         </div>
         <div>
@@ -79,7 +78,8 @@
   </footer>
 <script src="js/store.js"></script>
 <script src="js/auth.js"></script>
-<script src="js/nav.js"></script>
+<script src="js/icons.js?v=20260830-visual1"></script>
+<script src="js/nav.js?v=20260830-visual1"></script>
 <script src="js/pages/contato.js"></script>
 </body>
 </html>

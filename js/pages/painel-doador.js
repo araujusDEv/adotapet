@@ -21,27 +21,106 @@ function renderAnimaisTab() {
     </table>`;
 }
 
+function requestAnswer(value, labels = {}) {
+  const normalized = String(value ?? '').trim();
+  if (!normalized) return 'Não informado';
+  return labels[normalized] || normalized;
+}
+
+function yesNoAnswer(value) {
+  if (value === true || value === 'sim') return 'Sim';
+  if (value === false || value === 'nao') return 'Não';
+  return 'Não informado';
+}
+
+function requestQuestionnaireHTML(request) {
+  const questionnaire = request.questionnaire || {};
+  const housingLabels = { casa: 'Casa', apartamento: 'Apartamento', sitio: 'Sítio / chácara' };
+  const aloneTimeLabels = {
+    menos_2h: 'Menos de 2 horas',
+    '2_4h': '2 a 4 horas',
+    '4_8h': '4 a 8 horas',
+    mais_8h: 'Mais de 8 horas'
+  };
+  const answer = (label, value) => `
+    <div class="request-questionnaire-item">
+      <span>${escapeHTML(label)}</span>
+      <b>${escapeHTML(value)}</b>
+    </div>`;
+
+  return `
+    <div class="request-questionnaire-grid">
+      ${answer('Idade', requestAnswer(request.age))}
+      ${answer('Cidade', requestAnswer(request.city))}
+      ${answer('Tipo de moradia', requestAnswer(request.housing, housingLabels))}
+      ${answer('Possui quintal', yesNoAnswer(request.has_yard))}
+      ${answer('Possui outros animais', yesNoAnswer(request.has_pets))}
+      ${answer('Experiência com animais', yesNoAnswer(request.experience))}
+      ${answer('Todos da residência concordam', yesNoAnswer(questionnaire.household_agrees))}
+      ${answer('Possui condições financeiras', yesNoAnswer(questionnaire.financial_conditions))}
+      ${answer('Tempo que ficará sozinho', requestAnswer(questionnaire.alone_time, aloneTimeLabels))}
+      ${answer('Já teve animais anteriormente', yesNoAnswer(questionnaire.had_pets_before))}
+      ${answer('Compromisso com cuidados veterinários', yesNoAnswer(questionnaire.vet_commitment))}
+      ${answer('Compromisso com adoção responsável', yesNoAnswer(request.responsibility_confirmed))}
+    </div>
+    <div class="request-questionnaire-text">
+      <span>Motivo da adoção</span>
+      <p>${escapeHTML(requestAnswer(request.reason))}</p>
+    </div>
+    <div class="request-questionnaire-text">
+      <span>Plano em caso de dificuldade de adaptação</span>
+      <p>${escapeHTML(requestAnswer(questionnaire.adaptation_plan))}</p>
+    </div>`;
+}
+
 function renderSolicitacoesTab() {
   const requests = Store.getRequests().filter(r => {
     const animal = Store.getAnimal(r.animalId);
     return animal && Number(animal.ownerId) === currentUser.id;
   }).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
   const content = document.getElementById('tab-content');
-  content.innerHTML = `
-    <table>
-      <thead><tr><th>Animal</th><th>Interessado</th><th>Cidade</th><th>Status</th><th>Etapa</th><th>Ações</th></tr></thead>
-      <tbody>${requests.map(r => {
-        const animal = Store.getAnimal(r.animalId);
-        return `<tr>
-          <td>${escapeHTML(animal ? animal.name : '-')}</td><td>${escapeHTML(r.full_name || '-')}</td><td>${escapeHTML(r.city || '-')}</td>
-          <td>${escapeHTML(REQUEST_STATUS[r.status] || r.status)}</td><td>${escapeHTML(REQUEST_STAGE_LABEL[r.stage] || '-')}</td>
-          <td>${r.status === 'pendente' ? `
-            ${r.stage === 'em_analise' ? `<button class="btn btn-outline btn-sm" onclick="markInterview(${Number(r.id)})">Marcar entrevista</button>` : ''}
-            <button class="btn btn-primary btn-sm" onclick="respondRequest(${Number(r.id)}, 'aceita')">Aceitar</button>
-            <button class="btn btn-outline btn-sm" onclick="respondRequest(${Number(r.id)}, 'recusada')">Recusar</button>` : r.status === 'aceita' ? `<a class="btn btn-outline btn-sm" href="contrato.html?request=${Number(r.id)}">Ver termo</a>` : '-'}</td>
-        </tr>`;
-      }).join('') || '<tr><td colspan="6">Nenhuma solicitação recebida ainda.</td></tr>'}</tbody>
-    </table>`;
+  if (!requests.length) {
+    content.innerHTML = '<div class="empty-state"><h3>Nenhuma solicitação recebida ainda.</h3><p>Quando alguém demonstrar interesse em um animal, a solicitação aparecerá aqui.</p></div>';
+    return;
+  }
+
+  content.innerHTML = `<div class="request-review-list">${requests.map(request => {
+    const animal = Store.getAnimal(request.animalId);
+    const requestId = Number(request.id);
+    const requestDate = request.createdAt ? new Date(request.createdAt).toLocaleDateString('pt-BR') : 'Não informada';
+    let actions = '';
+
+    if (request.status === 'pendente' && request.stage === 'em_analise') {
+      actions = `
+        <button class="btn btn-primary btn-sm" onclick="markInterview(${requestId})">Marcar entrevista</button>
+        <button class="btn btn-outline btn-sm" onclick="respondRequest(${requestId}, 'recusada')">Recusar solicitação</button>`;
+    } else if (request.status === 'pendente' && request.stage === 'entrevista') {
+      actions = `
+        <button class="btn btn-primary btn-sm" onclick="respondRequest(${requestId}, 'aceita')">Aprovar adoção</button>
+        <button class="btn btn-outline btn-sm" onclick="respondRequest(${requestId}, 'recusada')">Recusar solicitação</button>`;
+    } else if (request.status === 'aceita') {
+      actions = `<a class="btn btn-outline btn-sm" href="contrato.html?request=${requestId}">Ver termo</a>`;
+    }
+
+    return `
+      <article class="card request-review-card">
+        <div class="request-review-summary">
+          <div><span>Animal</span><b>${escapeHTML(animal ? animal.name : 'Não encontrado')}</b></div>
+          <div><span>Interessado</span><b>${escapeHTML(request.full_name || 'Não informado')}</b></div>
+          <div><span>Solicitação</span><b>${escapeHTML(requestDate)}</b></div>
+          <div><span>Status</span><b>${escapeHTML(REQUEST_STATUS[request.status] || request.status)}</b></div>
+          <div><span>Etapa</span><b>${escapeHTML(REQUEST_STAGE_LABEL[request.stage] || request.stage || 'Não informada')}</b></div>
+        </div>
+        <details class="request-questionnaire">
+          <summary>Ver questionário respondido</summary>
+          <div class="request-questionnaire-content">
+            <h3>Respostas do interessado</h3>
+            ${requestQuestionnaireHTML(request)}
+          </div>
+        </details>
+        ${actions ? `<div class="request-actions">${actions}</div>` : ''}
+      </article>`;
+  }).join('')}</div>`;
 }
 
 function renderAcompanhamentosTab() {
@@ -94,6 +173,10 @@ function removeAnimal(id) {
 }
 
 function respondRequest(id, status) {
+  const message = status === 'aceita'
+    ? 'Confirma a aprovação desta adoção? As outras solicitações para o animal serão encerradas.'
+    : 'Confirma que deseja recusar esta solicitação?';
+  if (!confirm(message)) return;
   try {
     if (status === 'aceita') Store.acceptRequest(id);
     else Store.rejectRequest(id);

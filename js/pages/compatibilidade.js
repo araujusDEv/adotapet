@@ -32,7 +32,7 @@ function renderMatches(profile) {
       <div class="animal-photo">${cover ? `<img src="${escapeAttr(cover)}" alt="${escapeAttr(animal.name)}">` : '<div class="no-photo">Sem foto</div>'}<span class="badge">${animal.species === 'cachorro' ? 'Cão' : 'Gato'}</span></div>
       <div class="animal-body"><div style="display:flex;justify-content:space-between;align-items:baseline;"><h3>${escapeHTML(animal.name)}</h3><span class="match-score">${Number(score)}%</span></div>
       <div class="animal-meta"><span>${escapeHTML(animal.city)}</span></div>
-      <div class="match-reasons">${reasons.slice(0,3).map(r => `<div>✓ ${escapeHTML(r)}</div>`).join('')}${warnings.slice(0,2).map(w => `<div class="match-warning">⚠ ${escapeHTML(w)}</div>`).join('')}</div>
+      <div class="match-reasons">${reasons.slice(0,3).map(r => `<div>${svgIcon('check')} ${escapeHTML(r)}</div>`).join('')}${warnings.slice(0,2).map(w => `<div class="match-warning">${svgIcon('warning')} ${escapeHTML(w)}</div>`).join('')}</div>
       <a href="animal.html?id=${Number(animal.id)}" class="btn btn-primary btn-sm" style="margin-top:12px;align-self:flex-start;">Ver perfil completo</a></div>
     </div>`;
   }).join('');

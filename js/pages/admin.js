@@ -54,7 +54,7 @@ function renderAnimaisTab() {
     <thead><tr><th>Animal</th><th>Status</th><th>Verificado</th><th>Destaque</th><th>Ações</th></tr></thead>
     <tbody>${animals.map(a => `<tr>
       <td>${escapeHTML(a.name)}</td><td>${escapeHTML(ANIMAL_STATUS[a.status] || a.status)}</td>
-      <td>${a.verified ? '✓ Sim' : 'Não'}</td><td>${a.featured ? '★ Sim' : 'Não'}</td>
+      <td>${a.verified ? svgIcon('check', 'icon-sm') + ' Sim' : 'Não'}</td><td>${a.featured ? svgIcon('star', 'icon-sm') + ' Sim' : 'Não'}</td>
       <td><a class="btn btn-outline btn-sm" href="animal.html?id=${Number(a.id)}">Abrir</a>
       <button class="btn btn-outline btn-sm" onclick="toggleVerified(${Number(a.id)})">${a.verified ? 'Remover verificação' : 'Verificar perfil'}</button>
       <button class="btn btn-outline btn-sm" onclick="toggleFeatured(${Number(a.id)})">${a.featured ? 'Remover destaque' : 'Destacar'}</button></td>
@@ -100,11 +100,11 @@ function renderApoioTab() {
   document.getElementById('tab-content').innerHTML = `<div class="admin-split">
     <form class="card admin-inline-form" id="support-admin-form">
       <h2>Cadastrar ponto verificado</h2><div id="support-admin-alert"></div>
-      <div class="form-field"><label>Nome</label><input id="sp-name" required maxlength="160"></div>
-      <div class="form-row"><div class="form-field"><label>Categoria</label><select id="sp-category" required><option value="ong">ONG ou protetor</option><option value="veterinario">Veterinário</option><option value="castracao">Castração</option><option value="lar_temporario">Lar temporário</option><option value="transporte">Transporte solidário</option><option value="doacao">Doações</option></select></div><div class="form-field"><label>Contato</label><input id="sp-contact" maxlength="120"></div></div>
-      <div class="form-row"><div class="form-field"><label>Cidade</label><input id="sp-city" required maxlength="120"></div><div class="form-field"><label>Estado</label><input id="sp-state" required maxlength="40" value="RN"></div></div>
-      <div class="form-field"><label>Endereço</label><input id="sp-address" maxlength="300"></div>
-      <div class="form-field"><label>Serviços oferecidos</label><textarea id="sp-services" rows="3" maxlength="1000"></textarea></div>
+      <div class="form-field"><label for="sp-name">Nome</label><input id="sp-name" required maxlength="160"></div>
+      <div class="form-row"><div class="form-field"><label for="sp-category">Categoria</label><select id="sp-category" required><option value="ong">ONG ou protetor</option><option value="veterinario">Veterinário</option><option value="castracao">Castração</option><option value="lar_temporario">Lar temporário</option><option value="transporte">Transporte solidário</option><option value="doacao">Doações</option></select></div><div class="form-field"><label for="sp-contact">Contato</label><input id="sp-contact" maxlength="120"></div></div>
+      <div class="form-row"><div class="form-field"><label for="sp-city">Cidade</label><input id="sp-city" required maxlength="120"></div><div class="form-field"><label for="sp-state">Estado</label><input id="sp-state" required maxlength="40" value="RN"></div></div>
+      <div class="form-field"><label for="sp-address">Endereço</label><input id="sp-address" maxlength="300"></div>
+      <div class="form-field"><label for="sp-services">Serviços oferecidos</label><textarea id="sp-services" rows="3" maxlength="1000"></textarea></div>
       <button class="btn btn-primary" type="submit">Publicar na rede</button>
     </form>
     <div><h2>Pontos publicados</h2>${points.length ? points.map(p => `<div class="card admin-support-row"><div><b>${escapeHTML(p.name)}</b><small>${escapeHTML(p.city)}/${escapeHTML(p.state)} · ${escapeHTML(p.category)}</small></div><button class="btn btn-danger btn-sm" onclick="removeSupportPoint(${Number(p.id)})">Remover</button></div>`).join('') : '<p>Nenhum ponto cadastrado. Não publique dados sem antes conferi-los.</p>'}</div>

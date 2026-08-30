@@ -4,16 +4,15 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Cadastrar animal · AdotaPet</title>
-<link rel="icon" href="img/logo-icon.png">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css">
+<link rel="icon" href="img/brand-symbol.png">
+<link rel="stylesheet" href="css/style.css?v=20260830-visual1">
+<link rel="stylesheet" href="css/visual.css?v=20260830-visual1">
 </head>
 <body>
   <a href="#main" class="skip-link">Pular para o conteúdo</a>
   <header class="navbar">
     <div class="container navbar-inner">
-      <a href="index.html" class="logo"><span class="logo-mark"><img src="img/logo-icon.png" alt="AdotaPet"></span> AdotaPet</a>
+      <a href="index.html" class="logo" aria-label="AdotaPet — início"><span class="logo-mark"><img src="img/brand-symbol.png" alt="" width="56" height="56"></span><span class="brand-word"><span class="brand-adota">Adota</span><span class="brand-pet">Pet</span></span></a>
       <nav class="nav-links" id="nav-links">
         <a href="index.html">Início</a>
         <a href="adotar.html">Quero Adotar</a>
@@ -36,31 +35,31 @@
     <div id="alert-area"></div>
     <form id="animal-form">
       <div class="form-row">
-        <div class="form-field"><label>Nome do animal</label><input required id="a-name"></div>
+        <div class="form-field"><label for="a-name">Nome do animal</label><input required id="a-name"></div>
         <div class="form-field">
-          <label>Espécie</label>
+          <label for="a-species">Espécie</label>
           <select id="a-species"><option value="cachorro">Cachorro</option><option value="gato">Gato</option></select>
         </div>
       </div>
       <div class="form-row">
-        <div class="form-field"><label>Raça</label><input id="a-breed" placeholder="SRD, Labrador..."></div>
+        <div class="form-field"><label for="a-breed">Raça</label><input id="a-breed" placeholder="SRD, Labrador..."></div>
         <div class="form-field">
-          <label>Sexo</label>
+          <label for="a-sex">Sexo</label>
           <select id="a-sex"><option value="macho">Macho</option><option value="femea">Fêmea</option></select>
         </div>
       </div>
       <div class="form-row">
         <div class="form-field">
-          <label>Porte</label>
+          <label for="a-size">Porte</label>
           <select id="a-size"><option value="pequeno">Pequeno</option><option value="medio" selected>Médio</option><option value="grande">Grande</option></select>
         </div>
         <div class="form-field">
-          <label>Faixa etária</label>
+          <label for="a-age">Faixa etária</label>
           <select id="a-age"><option value="filhote">Filhote</option><option value="adulto" selected>Adulto</option><option value="idoso">Idoso</option></select>
         </div>
       </div>
       <div class="form-row">
-        <div class="form-field"><label>Cidade</label>
+        <div class="form-field"><label for="a-city">Cidade</label>
 <select id="a-city" required>
 <option>Apodi</option><option>Mossoró</option><option>Felipe Guerra</option>
 <option>Caraúbas</option><option>Governador Dix-Sept Rosado</option>
@@ -69,13 +68,13 @@
 <option>Outra</option></select>
 <input id="a-city-other" placeholder="Digite a cidade" style="display:none;margin-top:8px;">
 </div>
-        <div class="form-field"><label>Estado</label><input required id="a-state" value="RN"></div>
+        <div class="form-field"><label for="a-state">Estado</label><input required id="a-state" value="RN"></div>
       </div>
-      <div class="form-field"><label>Bairro / região (opcional)</label><input id="a-neighborhood" placeholder="Ex.: Centro, Bela Vista..."></div>
-      <div class="form-field"><label>Descrição curta</label><textarea rows="2" id="a-description"></textarea></div>
-      <div class="form-field"><label>História do animal</label><textarea rows="3" id="a-history"></textarea></div>
-      <div class="form-field"><label>Necessidades especiais (opcional)</label><input id="a-special" placeholder="Deixe em branco se não houver"></div>
-      <div class="form-field"><label>Observações de saúde (opcional)</label><textarea rows="2" id="a-health-notes"></textarea></div>
+      <div class="form-field"><label for="a-neighborhood">Bairro / região (opcional)</label><input id="a-neighborhood" placeholder="Ex.: Centro, Bela Vista..."></div>
+      <div class="form-field"><label for="a-description">Descrição curta</label><textarea rows="2" id="a-description"></textarea></div>
+      <div class="form-field"><label for="a-history">História do animal</label><textarea rows="3" id="a-history"></textarea></div>
+      <div class="form-field"><label for="a-special">Necessidades especiais (opcional)</label><input id="a-special" placeholder="Deixe em branco se não houver"></div>
+      <div class="form-field"><label for="a-health-notes">Observações de saúde (opcional)</label><textarea rows="2" id="a-health-notes"></textarea></div>
       <div class="checkbox-row"><input type="checkbox" id="a-neutered"><label for="a-neutered">Castrado</label></div>
       <div class="checkbox-row"><input type="checkbox" id="a-vaccinated"><label for="a-vaccinated">Vacinado</label></div>
       <div class="checkbox-row" style="margin-bottom:16px;"><input type="checkbox" id="a-dewormed"><label for="a-dewormed">Vermifugado</label></div>
@@ -95,19 +94,19 @@
         <div class="form-field"><label>Tranquilidade</label><div class="range-field"><input type="range" min="1" max="5" value="3" id="a-p-calm" oninput="document.getElementById('a-p-calm-v').textContent=this.value"><span id="a-p-calm-v">3</span></div></div>
       </div>
       <div class="form-field">
-        <label>Nível de energia (resumo, usado nos filtros)</label>
+        <label for="a-energy-level">Nível de energia (resumo, usado nos filtros)</label>
         <select id="a-energy-level"><option value="baixo">Baixo</option><option value="medio" selected>Médio</option><option value="alto">Alto</option></select>
       </div>
 
       <h3 style="font-size:1.05rem;">Convivência</h3>
       <div class="form-row">
-        <div class="form-field"><label>Crianças</label><select id="a-co-kids"><option value="nao_informado">Não informado</option><option value="sim">Sim</option><option value="nao">Não</option></select></div>
-        <div class="form-field"><label>Cães</label><select id="a-co-dogs"><option value="nao_informado">Não informado</option><option value="sim">Sim</option><option value="nao">Não</option></select></div>
+        <div class="form-field"><label for="a-co-kids">Crianças</label><select id="a-co-kids"><option value="nao_informado">Não informado</option><option value="sim">Sim</option><option value="nao">Não</option></select></div>
+        <div class="form-field"><label for="a-co-dogs">Cães</label><select id="a-co-dogs"><option value="nao_informado">Não informado</option><option value="sim">Sim</option><option value="nao">Não</option></select></div>
       </div>
-      <div class="form-field"><label>Gatos</label><select id="a-co-cats"><option value="nao_informado">Não informado</option><option value="sim">Sim</option><option value="nao">Não</option></select></div>
+      <div class="form-field"><label for="a-co-cats">Gatos</label><select id="a-co-cats"><option value="nao_informado">Não informado</option><option value="sim">Sim</option><option value="nao">Não</option></select></div>
 
-      <div class="form-field" style="margin-top:8px;"><label>Contato (WhatsApp, telefone ou e-mail)</label><input required id="a-contact"></div>
-      <div class="form-field"><label>Fotos (até 3, JPG/PNG/WebP, máximo 2 MB cada — salvas no banco SQLite)</label><input type="file" accept="image/*" multiple id="a-photos"></div>
+      <div class="form-field" style="margin-top:8px;"><label for="a-contact">Contato (WhatsApp, telefone ou e-mail)</label><input required id="a-contact"></div>
+      <div class="form-field"><label for="a-photos">Fotos (até 3, JPG/PNG/WebP, máximo 2 MB cada — salvas no banco SQLite)</label><input type="file" accept="image/*" multiple id="a-photos"></div>
       <button class="btn btn-primary" type="submit" style="width:100%;">Enviar para aprovação</button>
     </form>
   </div>
@@ -117,7 +116,7 @@
     <div class="container">
       <div class="footer-grid">
         <div>
-          <div class="footer-logo"><img src="img/logo-full.png" alt="AdotaPet"></div>
+          <div class="footer-logo"><a href="index.html" class="logo" aria-label="AdotaPet — início"><span class="logo-mark"><img src="img/brand-symbol.png" alt="" width="56" height="56"></span><span class="brand-word"><span class="brand-adota">Adota</span><span class="brand-pet">Pet</span></span></a></div>
           <p style="color:#EAF3EF;opacity:.85;font-size:.9rem;">Plataforma de adoção de animais desenvolvida por estudantes da Escola Estadual Professor Antônio Dantas, em Apodi/RN.</p>
         </div>
         <div>
@@ -143,7 +142,8 @@
   </footer>
 <script src="js/store.js"></script>
 <script src="js/auth.js"></script>
-<script src="js/nav.js"></script>
+<script src="js/icons.js?v=20260830-visual1"></script>
+<script src="js/nav.js?v=20260830-visual1"></script>
 <script src="js/pages/cadastrar-animal.js"></script>
 </body>
 </html>

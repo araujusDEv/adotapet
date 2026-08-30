@@ -10,7 +10,7 @@ function renderSupportPoints() {
   const el = document.getElementById('support-results');
   el.innerHTML = points.length ? points.map(point => `
     <article class="card support-card">
-      <div class="support-card-head"><span class="tag">${escapeHTML(SUPPORT_CATEGORY_LABEL[point.category] || point.category)}</span>${point.verified ? '<span class="verified-seal">✓ Verificado</span>' : ''}</div>
+      <div class="support-card-head"><span class="tag">${escapeHTML(SUPPORT_CATEGORY_LABEL[point.category] || point.category)}</span>${point.verified ? '<span class="verified-seal">' + svgIcon('shield-check') + ' Verificado</span>' : ''}</div>
       <h2>${escapeHTML(point.name)}</h2>
       <p><b>${escapeHTML(point.city)}/${escapeHTML(point.state)}</b>${point.address ? `<br>${escapeHTML(point.address)}` : ''}</p>
       ${point.services ? `<p>${escapeHTML(point.services)}</p>` : ''}
