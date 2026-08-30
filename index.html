@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Início · AdotaPet</title>
+<link rel="icon" href="img/logo-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <a href="#main" class="skip-link">Pular para o conteúdo</a>
+  <header class="navbar">
+    <div class="container navbar-inner">
+      <a href="index.html" class="logo"><span class="logo-mark"><img src="img/logo-icon.png" alt="AdotaPet"></span> AdotaPet</a>
+      <nav class="nav-links" id="nav-links">
+        <a href="index.html">Início</a>
+        <a href="adotar.html">Quero Adotar</a>
+        <a href="compatibilidade.html">Compatibilidade</a>
+        <a href="historias.html">Histórias</a>
+        <a href="desaparecidos.html">Desaparecidos</a>
+        <a href="conscientizacao.html">Conscientização</a>
+        <a href="sobre.html">Sobre</a>
+        <a href="contato.html">Contato</a>
+        <span id="nav-extra-links"></span>
+      </nav>
+      <div class="nav-actions" id="nav-actions"></div>
+    </div>
+  </header>
+<main id="main">
+<section class="hero">
+  <div class="container hero-grid">
+    <div>
+      <span class="eyebrow">Adoção responsável</span>
+      <h1 class="hero-title">Cada patinha merece um <span class="accent">segundo lar</span>.</h1>
+      <p style="font-size:1.05rem;max-width:480px;">O AdotaPet reúne animais disponíveis para adoção e avisos de animais desaparecidos em Apodi e cidades da região, aproximando adotantes, doadores e protetores.</p>
+      <div class="hero-actions">
+        <a href="adotar.html" class="btn btn-primary">Quero adotar</a>
+        <a href="cadastrar-animal.html" class="btn btn-outline">Cadastrar um animal</a>
+      </div>
+    </div>
+    <div class="hero-media">
+      <div class="hero-blob"></div>
+      <img src="https://images.unsplash.com/photo-1601758228041-f3b2795255f1?w=900&q=80" alt="Cão feliz aguardando adoção">
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="container stats-strip">
+    <div class="stat"><b id="stat-animais">0</b><span>Animais disponíveis</span></div>
+    <div class="stat"><b id="stat-adocoes">0</b><span>Adoções realizadas</span></div>
+    <div class="stat"><b id="stat-usuarios">0</b><span>Usuários cadastrados</span></div>
+    <div class="stat"><b id="stat-ongs">0</b><span>Doadores e protetores</span></div>
+  </div>
+  <p style="text-align:center;margin-top:18px;"><a href="transparencia.html" class="btn btn-outline btn-sm">Ver dados de impacto e transparência</a></p>
+</section>
+
+<section class="section section-alt">
+  <div class="container">
+    <span class="eyebrow">Como funciona</span>
+    <h2 style="margin-bottom:30px;max-width:560px;">Do primeiro clique ao novo lar, em quatro passos simples</h2>
+    <div class="steps">
+      <div class="step"><div class="step-num">01</div><h3 style="font-size:1.1rem;">Explore</h3><p>Navegue pelos animais disponíveis e use os filtros para encontrar o companheiro ideal.</p></div>
+      <div class="step"><div class="step-num">02</div><h3 style="font-size:1.1rem;">Conheça</h3><p>Veja a história, temperamento e saúde de cada animal antes de decidir.</p></div>
+      <div class="step"><div class="step-num">03</div><h3 style="font-size:1.1rem;">Solicite</h3><p>Envie seu interesse com um formulário simples direto para o responsável.</p></div>
+      <div class="step"><div class="step-num">04</div><h3 style="font-size:1.1rem;">Adote</h3><p>Combine os detalhes finais e leve seu novo melhor amigo para casa.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="container">
+    <span class="eyebrow">Destaques</span>
+    <h2 style="margin-bottom:30px;">Animais em destaque essa semana</h2>
+    <div class="grid-animals" id="featured-animals"></div>
+  </div>
+</section>
+
+<section class="section section-alt" id="recommended-section" style="display:none;">
+  <div class="container">
+    <span class="eyebrow">Para você</span>
+    <h2 style="margin-bottom:8px;">Recomendados para você</h2>
+    <p style="margin-bottom:30px;">Com base nas respostas do seu <a href="compatibilidade.html">questionário de compatibilidade</a>.</p>
+    <div class="grid-animals" id="recommended-animals"></div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="container" style="display:grid;grid-template-columns:1fr 1fr;gap:40px;">
+    <div>
+      <span class="eyebrow">Objetivo</span>
+      <h2>Reduzir o abandono de animais em Apodi e região</h2>
+      <p>A proposta do projeto é aproximar quem quer adotar de quem tem animais para doar, e ajudar na divulgação de animais desaparecidos na cidade e nos municípios vizinhos.</p>
+    </div>
+    <div>
+      <span class="eyebrow">O que a plataforma oferece</span>
+      <ul style="color:var(--color-ink-soft);line-height:1.9;padding-left:18px;">
+        <li>Cadastro gratuito de animais para adoção</li>
+        <li>Busca com filtros por cidade, porte e idade</li>
+        <li>Divulgação de animais desaparecidos</li>
+        <li>Solicitação de adoção direto pela plataforma</li>
+      </ul>
+    </div>
+  </div>
+</section>
+</main>
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-grid">
+        <div>
+          <div class="footer-logo"><img src="img/logo-full.png" alt="AdotaPet"></div>
+          <p style="color:#EAF3EF;opacity:.85;font-size:.9rem;">Plataforma de adoção de animais desenvolvida por estudantes da Escola Estadual Professor Antônio Dantas, em Apodi/RN.</p>
+        </div>
+        <div>
+          <h4>Plataforma</h4>
+          <p><a href="adotar.html">Quero Adotar</a>
+        <a href="compatibilidade.html">Compatibilidade</a>
+        <a href="historias.html">Histórias</a></p>
+          <p><a href="desaparecidos.html">Animais Desaparecidos</a></p>
+          <p><a href="conscientizacao.html">Conscientização</a></p>
+          <p><a href="sobre.html">Sobre</a></p>
+        </div>
+        <div>
+          <h4>Comunidade</h4>
+          <p><a href="cadastrar-animal.html">Cadastrar animal</a></p>
+          <p><a href="login.html">Entrar</a></p>
+          <p><a href="contato.html">Fale conosco</a></p>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <span>© 2026 AdotaPet. Todos os direitos reservados.</span>
+      </div>
+    </div>
+  </footer>
+<script src="js/store.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/nav.js"></script>
+<script src="js/cards.js"></script>
+<script src="js/pages/home.js"></script>
+</body>
+</html>

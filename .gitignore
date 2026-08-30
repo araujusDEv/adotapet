@@ -1,0 +1,7 @@
+node_modules/
+.env
+*.cookies
+data/adotapet.db
+data/adotapet.db-wal
+data/adotapet.db-shm
+npm-debug.log*

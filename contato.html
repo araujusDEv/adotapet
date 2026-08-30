@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Contato · AdotaPet</title>
+<link rel="icon" href="img/logo-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <a href="#main" class="skip-link">Pular para o conteúdo</a>
+  <header class="navbar">
+    <div class="container navbar-inner">
+      <a href="index.html" class="logo"><span class="logo-mark"><img src="img/logo-icon.png" alt="AdotaPet"></span> AdotaPet</a>
+      <nav class="nav-links" id="nav-links">
+        <a href="index.html">Início</a>
+        <a href="adotar.html">Quero Adotar</a>
+        <a href="compatibilidade.html">Compatibilidade</a>
+        <a href="historias.html">Histórias</a>
+        <a href="desaparecidos.html">Desaparecidos</a>
+        <a href="conscientizacao.html">Conscientização</a>
+        <a href="sobre.html">Sobre</a>
+        <a href="contato.html">Contato</a>
+        <span id="nav-extra-links"></span>
+      </nav>
+      <div class="nav-actions" id="nav-actions"></div>
+    </div>
+  </header>
+<main id="main">
+<div class="container section" style="display:grid;grid-template-columns:1fr 1fr;gap:40px;">
+  <div>
+    <span class="eyebrow">Contato</span>
+    <h1>Fale com a gente</h1>
+    <p>Projeto desenvolvido para fins acadêmicos na Escola Estadual Professor Antônio Dantas, em Apodi/RN. Use o formulário ao lado para dúvidas ou sugestões sobre a plataforma.</p>
+    <div class="info-list" style="grid-template-columns:1fr;">
+      <div class="info-item"><span>Escola</span><b>Escola Estadual Professor Antônio Dantas</b></div>
+      <div class="info-item"><span>Cidade</span><b>Apodi/RN</b></div>
+    </div>
+  </div>
+  <div class="form-card" style="margin:0;" id="contact-wrapper">
+    <form id="contact-form">
+      <div class="form-field"><label>Nome</label><input required id="c-name"></div>
+      <div class="form-field"><label>E-mail</label><input type="email" required id="c-email"></div>
+      <div class="form-field"><label>Mensagem</label><textarea rows="4" required id="c-message"></textarea></div>
+      <button class="btn btn-primary" type="submit" style="width:100%;">Enviar mensagem</button>
+    </form>
+  </div>
+</div>
+</main>
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-grid">
+        <div>
+          <div class="footer-logo"><img src="img/logo-full.png" alt="AdotaPet"></div>
+          <p style="color:#EAF3EF;opacity:.85;font-size:.9rem;">Plataforma de adoção de animais desenvolvida por estudantes da Escola Estadual Professor Antônio Dantas, em Apodi/RN.</p>
+        </div>
+        <div>
+          <h4>Plataforma</h4>
+          <p><a href="adotar.html">Quero Adotar</a>
+        <a href="compatibilidade.html">Compatibilidade</a>
+        <a href="historias.html">Histórias</a></p>
+          <p><a href="desaparecidos.html">Animais Desaparecidos</a></p>
+          <p><a href="conscientizacao.html">Conscientização</a></p>
+          <p><a href="sobre.html">Sobre</a></p>
+        </div>
+        <div>
+          <h4>Comunidade</h4>
+          <p><a href="cadastrar-animal.html">Cadastrar animal</a></p>
+          <p><a href="login.html">Entrar</a></p>
+          <p><a href="contato.html">Fale conosco</a></p>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <span>© 2026 AdotaPet. Todos os direitos reservados.</span>
+      </div>
+    </div>
+  </footer>
+<script src="js/store.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/nav.js"></script>
+<script src="js/pages/contato.js"></script>
+</body>
+</html>
