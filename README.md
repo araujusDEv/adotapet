@@ -79,13 +79,24 @@ As senhas não são armazenadas em texto puro: o servidor usa **scrypt + salt** 
 
 Para uma demonstração local com as contas antigas, use `SEED_DEMO_ACCOUNTS=1` antes da primeira execução. Não use essa opção na internet.
 
+## Contas e aprovação
+
+- **Usuário:** pode adotar, favoritar e também publicar/gerenciar os próprios animais.
+- **ONG / protetor:** pode publicar e analisar interessados nos próprios animais após a aprovação de um administrador.
+- **Administrador:** pode aprovar ONGs e anúncios e gerenciar toda a plataforma.
+- O cadastro público nunca cria uma conta administrativa.
+
 ## Diferenciais desta versão
 
-- Termo de adoção responsável gerado automaticamente após a aprovação.
+- Solicitações com as etapas Pendente, Em análise, Aprovada, Reprovada, Cancelada e Adoção concluída.
+- Aprovar uma solicitação não marca o animal como adotado; a conclusão é uma confirmação separada.
+- Termo de adoção responsável gerado automaticamente somente após a conclusão da adoção.
 - Confirmação do termo pelo adotante e impressão/salvamento em PDF.
 - Acompanhamento pós-adoção em 7, 30 e 90 dias, com foto e pedido de apoio.
-- Painel do doador para consultar atualizações das famílias.
-- Rede de apoio local publicada somente pelo administrador.
+- Painel de publicações para ver interessados, analisar o formulário, aprovar, reprovar e concluir a adoção.
+- Menu lateral no desktop, modo recolhido e painel deslizante acessível no celular.
+- Telas de login e cadastro responsivas, com mostrar senha, lembrar acesso, força da senha e pedido de recuperação.
+- Rede de apoio com unidades do Rio Grande do Norte, categoria, contato e link para conferência na fonte oficial; novos pontos continuam sendo publicados somente pelo administrador.
 - Alertas para usuários da mesma cidade quando um animal desaparece.
 - Casos prioritários e filtro específico para animais que precisam de mais atenção.
 - Página pública de transparência com indicadores calculados pelo sistema.
@@ -96,13 +107,13 @@ Para uma demonstração local com as contas antigas, use `SEED_DEMO_ACCOUNTS=1` 
 - Banco de dados SQLite real e centralizado.
 - Senhas armazenadas com hash e salt.
 - Sessão autenticada no servidor com cookie HttpOnly.
-- Permissões de administrador e doador verificadas também no back-end.
+- Permissões e propriedade dos registros verificadas no back-end.
 - Animais de demonstração associados corretamente ao perfil doador.
 - Bloqueio de solicitações duplicadas para o mesmo animal.
-- Status **Em processo de adoção** utilizado ao avançar para entrevista.
-- Data real de conclusão (`acceptedAt`) gravada ao aceitar uma adoção.
+- Status **Em processo de adoção** utilizado após a aprovação da solicitação.
+- Data real de conclusão (`completedAt`) gravada ao concluir uma adoção.
 - Estatística de tempo médio de adoção corrigida.
-- Outras solicitações são encerradas automaticamente após uma adoção ser aceita.
+- Outras solicitações são encerradas automaticamente após uma adoção ser concluída.
 - Galeria de múltiplas fotos corrigida.
 - Favoritos na página de detalhes corrigidos.
 - Edição de histórias de adoção corrigida.
@@ -128,6 +139,8 @@ petadopt-estatico/
 ├── animal.html
 ├── cadastrar-animal.html
 ├── painel-doador.html
+├── configuracoes.html
+├── notificacoes.html
 ├── minhas-solicitacoes.html
 ├── desaparecidos.html
 ├── desaparecido.html
@@ -142,6 +155,16 @@ petadopt-estatico/
     ├── cards.js
     └── pages/
 ```
+
+## Testes automatizados
+
+Com uma instância local de teste iniciada em `http://127.0.0.1:3170`, execute:
+
+```bash
+node tests/smoke-api.js
+```
+
+O teste cobre login, cadastro, aprovação de ONG, publicação, bloqueio de alteração por terceiros, envio e análise de solicitação, aprovação sem conclusão automática, reprovação com motivo, conclusão, cancelamento das demais solicitações e geração do termo.
 
 ## Publicação na internet
 

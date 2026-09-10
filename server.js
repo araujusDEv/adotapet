@@ -47,6 +47,20 @@ db.exec(`
   );
 `);
 
+function ensureUserColumn(name, definition) {
+  const columns = db.prepare('PRAGMA table_info(users)').all();
+  if (!columns.some(column => column.name === name)) db.exec(`ALTER TABLE users ADD COLUMN ${name} ${definition}`);
+}
+ensureUserColumn('account_type', "TEXT NOT NULL DEFAULT 'usuario'");
+ensureUserColumn('approval_status', "TEXT NOT NULL DEFAULT 'aprovado'");
+ensureUserColumn('approved_by', 'INTEGER');
+ensureUserColumn('approved_at', 'TEXT');
+ensureUserColumn('approval_reason', "TEXT NOT NULL DEFAULT ''");
+db.exec(`CREATE INDEX IF NOT EXISTS idx_users_account_approval ON users(account_type, approval_status);`);
+db.prepare(`UPDATE users SET account_type = CASE role WHEN 'admin' THEN 'admin' WHEN 'doador' THEN 'ong' ELSE 'usuario' END
+            WHERE account_type IS NULL OR account_type = '' OR (account_type = 'usuario' AND role IN ('admin','doador'))`).run();
+db.prepare(`UPDATE users SET approval_status='aprovado' WHERE approval_status IS NULL OR approval_status=''`).run();
+
 const COLLECTIONS = ['animals', 'missing', 'sightings', 'requests', 'favorites', 'reports', 'adoptionProfiles', 'notifications', 'adminLog', 'contracts', 'followups', 'supportPoints'];
 
 function now() { return new Date().toISOString(); }
@@ -55,6 +69,10 @@ function cleanText(value, max = 5000) {
 }
 function normalizeEmail(value) { return cleanText(value, 254).toLowerCase(); }
 function validEmail(email) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email); }
+function validExternalUrl(value) {
+  if (!value) return true;
+  try { return new URL(value).protocol === 'https:'; } catch { return false; }
+}
 function hashPassword(password, salt = crypto.randomBytes(16).toString('hex')) {
   const hash = crypto.scryptSync(String(password), salt, 64).toString('hex');
   return { salt, hash };
@@ -64,8 +82,8 @@ function verifyPassword(password, salt, expected) {
   const target = Buffer.from(expected, 'hex');
   return actual.length === target.length && crypto.timingSafeEqual(actual, target);
 }
-function validPasswordLength(password) {
-  return typeof password === 'string' && password.length >= 6 && password.length <= 128;
+function validPassword(password) {
+  return typeof password === 'string' && password.length >= 8 && password.length <= 128 && /[A-Za-zÀ-ÿ]/.test(password) && /\d/.test(password);
 }
 function randomBootstrapPassword() { return crypto.randomBytes(12).toString('base64url'); }
 function rateLimit(req, res, bucket, max, windowMs) {
@@ -83,6 +101,11 @@ function publicUser(row, includePrivate = false) {
     id: row.id,
     name: row.name,
     role: row.role,
+    accountType: row.account_type || (row.role === 'admin' ? 'admin' : row.role === 'doador' ? 'ong' : 'usuario'),
+    approvalStatus: row.approval_status || 'aprovado',
+    approvedBy: row.approved_by || null,
+    approvedAt: row.approved_at || null,
+    approvalReason: row.approval_reason || '',
     city: row.city || '',
     state: row.state || '',
     createdAt: row.created_at,
@@ -123,38 +146,47 @@ function addAdminLog(admin, message) {
   saveState('adminLog', list);
 }
 function canManageAnimal(user, animal) {
-  return Boolean(user && animal && (user.role === 'admin' || Number(animal.ownerId) === user.id));
+  return Boolean(user && animal && (user.role === 'admin' || (Number(animal.ownerId) === user.id && canPublish(user))));
+}
+function accountType(user) {
+  if (!user) return '';
+  return user.account_type || (user.role === 'admin' ? 'admin' : user.role === 'doador' ? 'ong' : 'usuario');
+}
+function canPublish(user) {
+  if (!user) return false;
+  if (accountType(user) === 'admin' || accountType(user) === 'usuario') return true;
+  return accountType(user) === 'ong' && (user.approval_status || 'aprovado') === 'aprovado';
 }
 function canManageRequest(user, request) {
   if (!user || !request) return false;
   if (user.role === 'admin') return true;
   const animal = getAnimal(request.animalId);
-  return Boolean(animal && Number(animal.ownerId) === user.id && user.role === 'doador');
+  return Boolean(animal && Number(animal.ownerId) === user.id && canPublish(user));
 }
 function recalcAnimalProcessStatus(animalId) {
   const animals = loadState('animals');
   const idx = animals.findIndex(a => a.id === Number(animalId));
   if (idx < 0 || animals[idx].status === 'adotado' || animals[idx].status === 'indisponivel' || animals[idx].status === 'aguardando_aprovacao') return;
   const requests = loadState('requests');
-  const hasInterview = requests.some(r => r.animalId === Number(animalId) && r.status === 'pendente' && r.stage === 'entrevista');
-  animals[idx].status = hasInterview ? 'em_processo' : 'disponivel';
+  const hasActiveApproval = requests.some(r => r.animalId === Number(animalId) && r.status === 'aprovada');
+  animals[idx].status = hasActiveApproval ? 'em_processo' : 'disponivel';
   saveState('animals', animals);
 }
 
 function ensureSeed() {
   const count = db.prepare('SELECT COUNT(*) AS n FROM users').get().n;
   if (!count) {
-    const insert = db.prepare(`INSERT INTO users(name,email,password_hash,password_salt,role,city,state,phone,created_at)
-                               VALUES(?,?,?,?,?,?,?,?,?)`);
+    const insert = db.prepare(`INSERT INTO users(name,email,password_hash,password_salt,role,city,state,phone,created_at,account_type,approval_status,approved_at)
+                               VALUES(?,?,?,?,?,?,?,?,?,?,?,?)`);
     const demo = process.env.SEED_DEMO_ACCOUNTS === '1';
     const adminEmail = normalizeEmail(process.env.ADMIN_EMAIL || 'admin@adotapet.com');
     const adminPassword = process.env.ADMIN_PASSWORD || (demo ? 'admin123' : randomBootstrapPassword());
     const donorEmail = normalizeEmail(process.env.DONOR_EMAIL || 'ong@adotapet.com');
     const donorPassword = process.env.DONOR_PASSWORD || (demo ? 'doador123' : randomBootstrapPassword());
     const a = hashPassword(adminPassword);
-    insert.run('Administrador', adminEmail, a.hash, a.salt, 'admin', '', '', '', now());
+    insert.run('Administrador', adminEmail, a.hash, a.salt, 'admin', '', '', '', now(), 'admin', 'aprovado', now());
     const d = hashPassword(donorPassword);
-    insert.run('Protetores de Apodi', donorEmail, d.hash, d.salt, 'doador', 'Apodi', 'RN', '', now());
+    insert.run('Protetores de Apodi', donorEmail, d.hash, d.salt, 'doador', 'Apodi', 'RN', '', now(), 'ong', 'aprovado', now());
     bootstrapCredentials = {
       adminEmail, adminPassword: process.env.ADMIN_PASSWORD ? null : adminPassword,
       donorEmail, donorPassword: process.env.DONOR_PASSWORD ? null : donorPassword
@@ -168,8 +200,59 @@ function ensureSeed() {
       saveState(key, value);
     }
   }
+
+  // Inclui uma única vez os pontos oficiais adicionados ao catálogo sem
+  // apagar pontos cadastrados pelo administrador em bancos já existentes.
+  const supportMigrationKey = 'migration:support_points_rn_20260909_v2';
+  const supportMigration = db.prepare('SELECT key FROM app_state WHERE key = ?').get(supportMigrationKey);
+  if (!supportMigration) {
+    const current = loadState('supportPoints');
+    for (const seededPoint of (seed.supportPoints || [])) {
+      const seededIndex = current.findIndex(point => point.seedKey && point.seedKey === seededPoint.seedKey);
+      if (seededIndex >= 0) {
+        current[seededIndex] = { ...current[seededIndex], ...seededPoint, id: current[seededIndex].id };
+        continue;
+      }
+      const alreadyExists = current.some(point =>
+        cleanText(point.name, 160).toLowerCase() === cleanText(seededPoint.name, 160).toLowerCase() &&
+        cleanText(point.city, 120).toLowerCase() === cleanText(seededPoint.city, 120).toLowerCase()
+      );
+      if (!alreadyExists) current.push({ ...seededPoint, id: newId(current) });
+    }
+    saveState('supportPoints', current);
+    saveState(supportMigrationKey, { appliedAt: now() });
+  }
 }
 ensureSeed();
+
+function migrateLegacyState() {
+  const requests = loadState('requests');
+  let changed = false;
+  const migrated = requests.map(item => {
+    const request = { ...item };
+    if (request.status === 'aceita') {
+      request.status = 'concluida';
+      request.stage = 'concluida';
+      request.completedAt = request.completedAt || request.acceptedAt || request.updatedAt || request.createdAt;
+      request.approvedAt = request.approvedAt || request.acceptedAt || request.completedAt;
+      changed = true;
+    } else if (request.status === 'recusada') {
+      request.status = 'reprovada';
+      request.stage = 'encerrada';
+      changed = true;
+    } else if (request.status === 'pendente' && request.stage === 'entrevista') {
+      request.status = 'aprovada';
+      changed = true;
+    } else if (request.status === 'pendente' && request.stage === 'em_analise') {
+      request.status = 'em_analise';
+      changed = true;
+    }
+    return request;
+  });
+  if (changed) saveState('requests', migrated);
+}
+migrateLegacyState();
+db.exec('PRAGMA optimize;');
 db.prepare('DELETE FROM sessions WHERE created_at < ?').run(new Date(Date.now() - SESSION_MAX_AGE_MS).toISOString());
 
 function json(res, status, payload) {
@@ -211,9 +294,10 @@ function tokenFrom(req) {
   const match = cookie.match(/(?:^|;\s*)petadopt_session=([^;]+)/);
   return match ? decodeURIComponent(match[1]) : '';
 }
-function setSessionCookie(res, token) {
+function setSessionCookie(res, token, remember = false) {
   const secure = process.env.COOKIE_SECURE === '1' ? '; Secure' : '';
-  res.setHeader('Set-Cookie', `petadopt_session=${encodeURIComponent(token)}; HttpOnly; SameSite=Strict; Path=/; Max-Age=604800${secure}`);
+  const maxAge = remember ? '; Max-Age=604800' : '';
+  res.setHeader('Set-Cookie', `petadopt_session=${encodeURIComponent(token)}; HttpOnly; SameSite=Strict; Path=/${maxAge}${secure}`);
 }
 function clearSessionCookie(res) {
   const secure = process.env.COOKIE_SECURE === '1' ? '; Secure' : '';
@@ -234,6 +318,9 @@ function authUser(req) {
 function requireUser(req, res, roles = null) {
   const user = authUser(req);
   if (!user) { error(res, 401, 'Você precisa entrar na sua conta.'); return null; }
+  if (accountType(user) === 'ong' && user.approval_status !== 'aprovado') {
+    error(res, 403, 'O cadastro desta ONG ainda não está aprovado.'); return null;
+  }
   if (roles && !roles.includes(user.role)) { error(res, 403, 'Você não tem permissão para esta ação.'); return null; }
   return user;
 }
@@ -246,6 +333,7 @@ function createSession(userId) {
 async function handleApi(req, res, url) {
   const method = req.method || 'GET';
   const pathname = url.pathname;
+  let match;
 
   if (method === 'GET' && pathname === '/api/health') {
     return json(res, 200, { ok: true, database: 'SQLite', time: now() });
@@ -262,7 +350,7 @@ async function handleApi(req, res, url) {
       urgent: animals.filter(a => a.status === 'disponivel' && (a.special_needs || a.age_group === 'idoso' || (Date.now() - new Date(a.createdAt).getTime()) > 60 * 86400000)).length,
       missing: missing.filter(m => !m.found).length,
       found: missing.filter(m => m.found).length,
-      completedAdoptions: requests.filter(r => r.status === 'aceita').length,
+      completedAdoptions: requests.filter(r => r.status === 'concluida').length,
       postAdoptionUpdates: followups.length,
       supportPoints: loadState('supportPoints').length
     });
@@ -279,8 +367,14 @@ async function handleApi(req, res, url) {
     if (!user || !verifyPassword(body.password || '', user.password_salt, user.password_hash)) {
       return error(res, 401, 'E-mail ou senha inválidos.');
     }
+    if (accountType(user) === 'ong' && user.approval_status !== 'aprovado') {
+      const message = user.approval_status === 'reprovado'
+        ? `O cadastro desta ONG não foi aprovado.${user.approval_reason ? ` Motivo: ${user.approval_reason}` : ''}`
+        : 'O cadastro da ONG está aguardando a análise de um administrador.';
+      return error(res, 403, message);
+    }
     const token = createSession(user.id);
-    setSessionCookie(res, token);
+    setSessionCookie(res, token, Boolean(body.remember));
     return json(res, 200, { user: publicUser(user, true) });
   }
 
@@ -290,24 +384,57 @@ async function handleApi(req, res, url) {
     const name = cleanText(body.name, 120);
     const email = normalizeEmail(body.email);
     const password = String(body.password || '');
-    const role = body.role === 'doador' ? 'doador' : 'adotante';
+    const passwordConfirmation = String(body.passwordConfirmation ?? body.password_confirmation ?? '');
+    const type = body.accountType === 'ong' || body.role === 'doador' ? 'ong' : 'usuario';
+    const role = type === 'ong' ? 'doador' : 'adotante';
+    const city = cleanText(body.city, 120);
+    const state = cleanText(body.state, 40);
+    const phone = cleanText(body.phone, 50);
     if (name.length < 2) return error(res, 400, 'Informe um nome válido.');
     if (!validEmail(email)) return error(res, 400, 'Informe um e-mail válido.');
-    if (!validPasswordLength(password)) return error(res, 400, 'A senha precisa ter entre 6 e 128 caracteres.');
+    if (!city) return error(res, 400, 'Informe sua cidade.');
+    if (phone.replace(/\D/g, '').length < 10) return error(res, 400, 'Informe um telefone válido com DDD.');
+    if (!validPassword(password)) return error(res, 400, 'A senha deve ter ao menos 8 caracteres, uma letra e um número.');
+    if (password !== passwordConfirmation) return error(res, 400, 'A confirmação da senha não confere.');
+    if (body.termsAccepted !== true && body.terms_accepted !== true) return error(res, 400, 'Você precisa aceitar os termos de uso e a política de privacidade.');
     if (db.prepare('SELECT id FROM users WHERE email=? COLLATE NOCASE').get(email)) return error(res, 409, 'Já existe uma conta com este e-mail.');
     const { salt, hash } = hashPassword(password);
-    const result = db.prepare(`INSERT INTO users(name,email,password_hash,password_salt,role,city,state,phone,created_at)
-                               VALUES(?,?,?,?,?,?,?,?,?)`)
-      .run(name, email, hash, salt, role, cleanText(body.city, 120), cleanText(body.state, 40), cleanText(body.phone, 50), now());
+    const approvalStatus = type === 'ong' ? 'pendente' : 'aprovado';
+    const approvedAt = type === 'ong' ? null : now();
+    const result = db.prepare(`INSERT INTO users(name,email,password_hash,password_salt,role,city,state,phone,created_at,account_type,approval_status,approved_at)
+                               VALUES(?,?,?,?,?,?,?,?,?,?,?,?)`)
+      .run(name, email, hash, salt, role, city, state, phone, now(), type, approvalStatus, approvedAt);
     const user = db.prepare('SELECT * FROM users WHERE id=?').get(Number(result.lastInsertRowid));
+    if (type === 'ong') {
+      const admins = db.prepare("SELECT id FROM users WHERE role='admin'").all();
+      admins.forEach(admin => addNotification(admin.id, `Nova ONG aguardando análise: ${name}.`));
+      return json(res, 201, { user: publicUser(user, true), pendingApproval: true, message: 'Cadastro enviado. Um administrador precisa aprovar a ONG antes do primeiro acesso.' });
+    }
     const token = createSession(user.id);
-    setSessionCookie(res, token);
+    setSessionCookie(res, token, Boolean(body.remember));
     return json(res, 201, { user: publicUser(user, true) });
+  }
+
+  if (method === 'POST' && pathname === '/api/auth/forgot-password') {
+    if (rateLimit(req, res, 'forgot-password', 6, 30 * 60 * 1000)) return;
+    const body = await readBody(req);
+    const email = normalizeEmail(body.email);
+    if (validEmail(email)) {
+      const target = db.prepare('SELECT id,name,email FROM users WHERE email=? COLLATE NOCASE').get(email);
+      if (target) {
+        const reports = loadState('reports');
+        reports.push({ id: newId(reports), reporterUserId: target.id, target_type: 'usuario', target_id: target.id, category: 'recuperacao_senha', reason: `Pedido de recuperação de acesso para ${target.email}.`, status: 'aberta', createdAt: now() });
+        saveState('reports', reports);
+        db.prepare("SELECT id FROM users WHERE role='admin'").all().forEach(admin => addNotification(admin.id, `Pedido de recuperação de acesso: ${target.name}.`));
+      }
+    }
+    return json(res, 200, { ok: true, message: 'Se o e-mail estiver cadastrado, o pedido de recuperação foi registrado para a equipe responsável.' });
   }
 
   if (method === 'GET' && pathname === '/api/auth/me') {
     const user = authUser(req);
     if (!user) return error(res, 401, 'Sessão inválida ou expirada.');
+    if (accountType(user) === 'ong' && user.approval_status !== 'aprovado') return error(res, 403, 'O cadastro desta ONG ainda não está aprovado.');
     return json(res, 200, { user: publicUser(user, true) });
   }
 
@@ -325,7 +452,36 @@ async function handleApi(req, res, url) {
     return json(res, 200, rows.map(r => publicUser(r, includePrivate)));
   }
 
-  let match = pathname.match(/^\/api\/users\/(\d+)$/);
+  if (method === 'PATCH' && pathname === '/api/users/me') {
+    const user = requireUser(req, res); if (!user) return;
+    const body = await readBody(req);
+    const name = cleanText(body.name, 120);
+    const city = cleanText(body.city, 120);
+    const state = cleanText(body.state, 40);
+    const phone = cleanText(body.phone, 50);
+    if (name.length < 2 || !city || phone.replace(/\D/g, '').length < 10) return error(res, 400, 'Preencha nome, cidade e telefone corretamente.');
+    db.prepare('UPDATE users SET name=?,city=?,state=?,phone=? WHERE id=?').run(name, city, state, phone, user.id);
+    return json(res, 200, { user: publicUser(db.prepare('SELECT * FROM users WHERE id=?').get(user.id), true) });
+  }
+
+  match = pathname.match(/^\/api\/users\/(\d+)\/(approve|reject)$/);
+  if (method === 'POST' && match) {
+    const admin = requireUser(req, res, ['admin']); if (!admin) return;
+    const id = Number(match[1]); const action = match[2]; const body = await readBody(req);
+    const target = db.prepare('SELECT * FROM users WHERE id=?').get(id);
+    if (!target) return error(res, 404, 'Usuário não encontrado.');
+    if (accountType(target) !== 'ong') return error(res, 400, 'Somente cadastros de ONG passam por esta análise.');
+    const status = action === 'approve' ? 'aprovado' : 'reprovado';
+    const reason = action === 'reject' ? cleanText(body.reason, 1000) : '';
+    db.prepare('UPDATE users SET approval_status=?,approved_by=?,approved_at=?,approval_reason=? WHERE id=?')
+      .run(status, admin.id, now(), reason, id);
+    db.prepare('DELETE FROM sessions WHERE user_id=?').run(id);
+    addNotification(id, action === 'approve' ? 'Seu cadastro de ONG foi aprovado. Você já pode entrar e publicar animais.' : `Seu cadastro de ONG não foi aprovado.${reason ? ` Motivo: ${reason}` : ''}`);
+    addAdminLog(admin, `${action === 'approve' ? 'Aprovou' : 'Reprovou'} o cadastro da ONG ${target.name}${reason ? `: ${reason}` : '.'}`);
+    return json(res, 200, { user: publicUser(db.prepare('SELECT * FROM users WHERE id=?').get(id), true) });
+  }
+
+  match = pathname.match(/^\/api\/users\/(\d+)$/);
   if (method === 'DELETE' && match) {
     const admin = requireUser(req, res, ['admin']); if (!admin) return;
     const id = Number(match[1]);
@@ -354,7 +510,8 @@ async function handleApi(req, res, url) {
   }
 
   if (method === 'POST' && pathname === '/api/animals') {
-    const user = requireUser(req, res, ['doador', 'admin']); if (!user) return;
+    const user = requireUser(req, res); if (!user) return;
+    if (!canPublish(user)) return error(res, 403, 'Sua conta ainda não tem permissão para publicar animais.');
     const body = await readBody(req);
     const list = loadState('animals');
     const photos = Array.isArray(body.photos) ? body.photos.filter(p => typeof p === 'string' && (p.startsWith('data:image/') || p.startsWith('img/'))).slice(0, 3) : [];
@@ -389,7 +546,7 @@ async function handleApi(req, res, url) {
 
   match = pathname.match(/^\/api\/animals\/(\d+)$/);
   if (method === 'PATCH' && match) {
-    const user = requireUser(req, res, ['doador','admin']); if (!user) return;
+    const user = requireUser(req, res); if (!user) return;
     const id = Number(match[1]); const body = await readBody(req);
     const list = loadState('animals'); const idx = list.findIndex(a => a.id === id);
     if (idx < 0) return error(res, 404, 'Animal não encontrado.');
@@ -403,6 +560,14 @@ async function handleApi(req, res, url) {
     if (user.role === 'admin' && Object.prototype.hasOwnProperty.call(body, 'featured')) list[idx].featured = Boolean(body.featured);
     const textFields = { name:120, breed:120, city:120, state:40, neighborhood:120, description:2000, history:3000, contact:120, special_needs:1200, health_notes:1600 };
     for (const [key, limit] of Object.entries(textFields)) if (Object.prototype.hasOwnProperty.call(body, key)) list[idx][key] = cleanText(body[key], limit);
+    if (Object.prototype.hasOwnProperty.call(body, 'species') && ['cachorro','gato'].includes(body.species)) list[idx].species = body.species;
+    if (Object.prototype.hasOwnProperty.call(body, 'sex') && ['macho','femea'].includes(body.sex)) list[idx].sex = body.sex;
+    if (Object.prototype.hasOwnProperty.call(body, 'size') && ['pequeno','medio','grande'].includes(body.size)) list[idx].size = body.size;
+    if (Object.prototype.hasOwnProperty.call(body, 'age_group') && ['filhote','adulto','idoso'].includes(body.age_group)) list[idx].age_group = body.age_group;
+    if (Array.isArray(body.photos)) {
+      const photos = body.photos.filter(p => typeof p === 'string' && (p.startsWith('data:image/') || p.startsWith('img/'))).slice(0, 3);
+      if (photos.length) list[idx].photos = photos;
+    }
     for (const key of ['neutered','vaccinated','dewormed']) if (Object.prototype.hasOwnProperty.call(body, key)) list[idx][key] = Boolean(body[key]);
     if (Object.prototype.hasOwnProperty.call(body, 'energy_level') && ['baixo','medio','alto'].includes(body.energy_level)) list[idx].energy_level = body.energy_level;
     if (body.personality && typeof body.personality === 'object' && !Array.isArray(body.personality)) list[idx].personality = body.personality;
@@ -416,7 +581,7 @@ async function handleApi(req, res, url) {
     return json(res, 200, list[idx]);
   }
   if (method === 'DELETE' && match) {
-    const user = requireUser(req, res, ['doador','admin']); if (!user) return;
+    const user = requireUser(req, res); if (!user) return;
     const id = Number(match[1]); const list = loadState('animals'); const animal = list.find(a => a.id === id);
     if (!animal) return error(res, 404, 'Animal não encontrado.');
     if (!canManageAnimal(user, animal)) return error(res, 403, 'Você não pode excluir este animal.');
@@ -428,17 +593,17 @@ async function handleApi(req, res, url) {
   if (method === 'GET' && pathname === '/api/requests') {
     const user = requireUser(req, res); if (!user) return;
     const list = loadState('requests');
-    if (user.role === 'admin') return json(res, 200, list);
-    if (user.role === 'doador') {
-      const owned = new Set(loadState('animals').filter(a => Number(a.ownerId) === user.id).map(a => a.id));
-      return json(res, 200, list.filter(r => owned.has(r.animalId)));
-    }
-    return json(res, 200, list.filter(r => Number(r.requesterId) === user.id));
+    const visible = list.filter(request => Number(request.requesterId) === user.id || canManageRequest(user, request));
+    return json(res, 200, visible.map(request => {
+      if (!canManageRequest(user, request)) return request;
+      const requester = db.prepare('SELECT * FROM users WHERE id=?').get(Number(request.requesterId));
+      return { ...request, requester: publicUser(requester, true) };
+    }));
   }
 
   if (method === 'GET' && pathname === '/api/stories') {
-    const stories = loadState('requests').filter(r => r.status === 'aceita' && r.story).map(r => ({
-      id: r.id, animalId: r.animalId, full_name: r.full_name, story: r.story, acceptedAt: r.acceptedAt || null
+    const stories = loadState('requests').filter(r => r.status === 'concluida' && r.story).map(r => ({
+      id: r.id, animalId: r.animalId, full_name: r.full_name, story: r.story, acceptedAt: r.completedAt || r.acceptedAt || null
     }));
     return json(res, 200, stories);
   }
@@ -450,7 +615,7 @@ async function handleApi(req, res, url) {
     if (animal.status !== 'disponivel') return error(res, 409, 'Este animal não está disponível para novas solicitações.');
     if (Number(animal.ownerId) === user.id) return error(res, 400, 'Você não pode solicitar a adoção de um animal publicado pela sua própria conta.');
     const list = loadState('requests');
-    if (list.some(r => r.animalId === animal.id && r.requesterId === user.id && ['pendente','aceita'].includes(r.status))) {
+    if (list.some(r => r.animalId === animal.id && r.requesterId === user.id && ['pendente','em_analise','aprovada'].includes(r.status))) {
       return error(res, 409, 'Você já possui uma solicitação ativa para este animal.');
     }
     const record = {
@@ -466,55 +631,82 @@ async function handleApi(req, res, url) {
         vet_commitment: cleanText(body.questionnaire.vet_commitment, 10),
         adaptation_plan: cleanText(body.questionnaire.adaptation_plan, 1000)
       } : {},
-      status: 'pendente', stage: 'em_analise', createdAt: now()
+      status: 'pendente', stage: 'enviada', createdAt: now(), reviewedBy: null, reviewedAt: null, rejectionReason: ''
     };
     if (!record.responsibility_confirmed) return error(res, 400, 'Confirme o compromisso com a adoção responsável.');
     list.push(record); saveState('requests', list);
-    addNotification(user.id, `Sua solicitação para ${animal.name} foi recebida e está em análise.`);
+    addNotification(user.id, `Sua solicitação para ${animal.name} foi recebida e está pendente de análise.`);
     addNotification(animal.ownerId, `${user.name} enviou uma solicitação de adoção para ${animal.name}.`);
     return json(res, 201, record);
   }
 
-  match = pathname.match(/^\/api\/requests\/(\d+)\/(interview|accept|reject|story)$/);
+  match = pathname.match(/^\/api\/requests\/(\d+)\/(analyze|approve|accept|interview|reject|complete|cancel|story)$/);
   if (method === 'POST' && match) {
     const id = Number(match[1]); const action = match[2]; const request = getRequest(id);
     if (!request) return error(res, 404, 'Solicitação não encontrada.');
     const body = await readBody(req);
     if (action === 'story') {
       const user = requireUser(req, res); if (!user) return;
-      if (request.requesterId !== user.id || request.status !== 'aceita') return error(res, 403, 'Você não pode editar esta história.');
+      if (request.requesterId !== user.id || request.status !== 'concluida') return error(res, 403, 'Você não pode editar esta história.');
       const list = loadState('requests'); const idx = list.findIndex(r => r.id === id);
       list[idx].story = cleanText(body.story, 3000); list[idx].storyUpdatedAt = now(); saveState('requests', list);
       return json(res, 200, list[idx]);
     }
-    const user = requireUser(req, res, ['doador','admin']); if (!user) return;
+    const user = requireUser(req, res); if (!user) return;
+    if (action === 'cancel') {
+      if (Number(request.requesterId) !== user.id) return error(res, 403, 'Somente o interessado pode cancelar esta solicitação.');
+      if (!['pendente','em_analise','aprovada'].includes(request.status)) return error(res, 409, 'Esta solicitação já foi encerrada.');
+      const requests = loadState('requests'); const idx = requests.findIndex(r => r.id === id);
+      requests[idx] = { ...requests[idx], status: 'cancelada', stage: 'encerrada', canceledAt: now(), cancellationReason: cleanText(body.reason, 1000) };
+      saveState('requests', requests);
+      const animal = getAnimal(request.animalId);
+      if (animal?.ownerId) addNotification(animal.ownerId, `${user.name} cancelou a solicitação de adoção para ${animal.name}.`);
+      recalcAnimalProcessStatus(request.animalId);
+      return json(res, 200, requests[idx]);
+    }
     if (!canManageRequest(user, request)) return error(res, 403, 'Você não pode responder a esta solicitação.');
     const animal = getAnimal(request.animalId);
     if (!animal) return error(res, 404, 'Animal não encontrado.');
     const requests = loadState('requests'); const idx = requests.findIndex(r => r.id === id);
-    if (action === 'interview') {
-      if (requests[idx].status !== 'pendente') return error(res, 409, 'Esta solicitação já foi encerrada.');
-      requests[idx].stage = 'entrevista'; requests[idx].interviewAt = now(); saveState('requests', requests);
-      const animals = loadState('animals'); const ai = animals.findIndex(a => a.id === animal.id);
-      if (ai >= 0 && animals[ai].status === 'disponivel') { animals[ai].status = 'em_processo'; saveState('animals', animals); }
-      addNotification(request.requesterId, `O responsável por ${animal.name} quer avançar para entrevista/contato com você.`);
+    if (action === 'analyze') {
+      if (requests[idx].status !== 'pendente') return error(res, 409, 'Esta solicitação já saiu da etapa pendente.');
+      requests[idx] = { ...requests[idx], status: 'em_analise', stage: 'em_analise', reviewedBy: user.id, reviewedAt: now() };
+      saveState('requests', requests);
+      addNotification(request.requesterId, `Sua solicitação para ${animal.name} começou a ser analisada.`);
       return json(res, 200, requests[idx]);
     }
-    if (action === 'accept') {
-      if (requests[idx].status !== 'pendente') return error(res, 409, 'Esta solicitação já foi encerrada.');
+    if (action === 'approve' || action === 'accept') {
+      if (!['pendente','em_analise'].includes(requests[idx].status)) return error(res, 409, 'Esta solicitação não pode mais ser aprovada.');
+      const approvedAt = now();
+      requests[idx] = { ...requests[idx], status: 'aprovada', stage: 'aprovada', reviewedBy: user.id, reviewedAt: approvedAt, approvedBy: user.id, approvedAt };
+      saveState('requests', requests);
+      const animals = loadState('animals'); const ai = animals.findIndex(a => a.id === animal.id);
+      if (ai >= 0 && animals[ai].status === 'disponivel') { animals[ai].status = 'em_processo'; saveState('animals', animals); }
+      addNotification(request.requesterId, `Sua solicitação para ${animal.name} foi aprovada. Aguarde o contato para combinar a entrevista e os próximos passos.`);
+      return json(res, 200, requests[idx]);
+    }
+    if (action === 'interview') {
+      if (requests[idx].status !== 'aprovada') return error(res, 409, 'Aprove a solicitação antes de registrar a entrevista.');
+      requests[idx] = { ...requests[idx], stage: 'entrevista', interviewAt: now() };
+      saveState('requests', requests);
+      addNotification(request.requesterId, `A etapa de entrevista/contato para a adoção de ${animal.name} foi registrada.`);
+      return json(res, 200, requests[idx]);
+    }
+    if (action === 'complete') {
+      if (requests[idx].status !== 'aprovada') return error(res, 409, 'A solicitação precisa estar aprovada antes de concluir a adoção.');
       if (!['disponivel', 'em_processo'].includes(animal.status)) return error(res, 409, 'Este animal não está disponível para concluir a adoção.');
-      const acceptedAt = now();
-      requests[idx] = { ...requests[idx], status: 'aceita', stage: 'concluida', acceptedAt };
+      const completedAt = now();
+      requests[idx] = { ...requests[idx], status: 'concluida', stage: 'concluida', completedAt, acceptedAt: completedAt, completedBy: user.id };
       for (let i = 0; i < requests.length; i++) {
         const r = requests[i];
-        if (r.animalId === request.animalId && r.id !== id && r.status === 'pendente') {
-          requests[i] = { ...r, status: 'cancelada', closedAt: acceptedAt };
+        if (r.animalId === request.animalId && r.id !== id && ['pendente','em_analise','aprovada'].includes(r.status)) {
+          requests[i] = { ...r, status: 'cancelada', stage: 'encerrada', closedAt: completedAt };
           addNotification(r.requesterId, `${animal.name} já foi adotado por outra pessoa. Sua solicitação foi encerrada.`);
         }
       }
       saveState('requests', requests);
       const animals = loadState('animals'); const ai = animals.findIndex(a => a.id === animal.id);
-      if (ai >= 0) { animals[ai].status = 'adotado'; animals[ai].adoptedAt = acceptedAt; saveState('animals', animals); }
+      if (ai >= 0) { animals[ai].status = 'adotado'; animals[ai].adoptedAt = completedAt; saveState('animals', animals); }
       const contracts = loadState('contracts').filter(c => c.requestId !== id);
       const adopter = db.prepare('SELECT * FROM users WHERE id=?').get(request.requesterId);
       const owner = db.prepare('SELECT * FROM users WHERE id=?').get(animal.ownerId);
@@ -523,7 +715,7 @@ async function handleApi(req, res, url) {
         animalId: animal.id, animalName: animal.name, species: animal.species, breed: animal.breed || '',
         adopterId: adopter?.id || request.requesterId, adopterName: adopter?.name || request.full_name, adopterCity: adopter?.city || request.city || '',
         ownerId: owner?.id || animal.ownerId, ownerName: owner?.name || 'Responsável pelo animal', ownerCity: owner?.city || animal.city || '',
-        acceptedAt, ownerAcknowledgedAt: acceptedAt, adopterAcknowledgedAt: null,
+        acceptedAt: completedAt, ownerAcknowledgedAt: completedAt, adopterAcknowledgedAt: null,
         clauses: [
           'Garantir alimentação, abrigo, cuidados veterinários e tratamento sem maus-tratos.',
           'Manter vacinação e medidas preventivas de saúde adequadas.',
@@ -532,15 +724,17 @@ async function handleApi(req, res, url) {
         ]
       });
       saveState('contracts', contracts);
-      addNotification(request.requesterId, `Sua adoção de ${animal.name} foi aprovada. Parabéns pelo novo membro da família!`);
+      addNotification(request.requesterId, `A adoção de ${animal.name} foi concluída. O termo de adoção responsável já está disponível.`);
       loadState('favorites').filter(f => f.animalId === animal.id && f.userId !== request.requesterId)
         .forEach(f => addNotification(f.userId, `Um animal que você favoritou (${animal.name}) foi adotado.`));
       return json(res, 200, requests.find(r => r.id === id));
     }
     if (action === 'reject') {
-      if (requests[idx].status !== 'pendente') return error(res, 409, 'Esta solicitação já foi encerrada.');
-      requests[idx] = { ...requests[idx], status: 'recusada', rejectedAt: now() }; saveState('requests', requests);
-      addNotification(request.requesterId, `Sua solicitação para ${animal.name} não foi aprovada desta vez.`);
+      if (!['pendente','em_analise','aprovada'].includes(requests[idx].status)) return error(res, 409, 'Esta solicitação já foi encerrada.');
+      const rejectedAt = now(); const rejectionReason = cleanText(body.reason, 1000);
+      requests[idx] = { ...requests[idx], status: 'reprovada', stage: 'encerrada', reviewedBy: user.id, reviewedAt: rejectedAt, rejectedBy: user.id, rejectedAt, rejectionReason };
+      saveState('requests', requests);
+      addNotification(request.requesterId, `Após a análise, sua solicitação para ${animal.name} não foi aprovada desta vez.${rejectionReason ? ` Motivo informado: ${rejectionReason}` : ''} Você pode continuar conhecendo outros animais disponíveis.`);
       recalcAnimalProcessStatus(animal.id);
       return json(res, 200, requests[idx]);
     }
@@ -688,11 +882,11 @@ async function handleApi(req, res, url) {
   if (method === 'POST' && pathname === '/api/followups') {
     const user = requireUser(req, res); if (!user) return;
     const body = await readBody(req); const request = getRequest(body.requestId);
-    if (!request || request.status !== 'aceita') return error(res, 404, 'Adoção concluída não encontrada.');
+    if (!request || request.status !== 'concluida') return error(res, 404, 'Adoção concluída não encontrada.');
     if (request.requesterId !== user.id) return error(res, 403, 'Somente o adotante pode enviar este acompanhamento.');
     const day = Number(body.day);
     if (![7, 30, 90].includes(day)) return error(res, 400, 'Etapa de acompanhamento inválida.');
-    const dueAt = new Date(new Date(request.acceptedAt).getTime() + day * 86400000);
+    const dueAt = new Date(new Date(request.completedAt || request.acceptedAt).getTime() + day * 86400000);
     if (Date.now() < dueAt.getTime()) return error(res, 409, `Este acompanhamento ficará disponível em ${dueAt.toLocaleDateString('pt-BR')}.`);
     const list = loadState('followups');
     if (list.some(f => f.requestId === request.id && f.day === day)) return error(res, 409, 'Este acompanhamento já foi enviado.');
@@ -716,9 +910,11 @@ async function handleApi(req, res, url) {
     const record = {
       id: newId(list), name: cleanText(body.name, 160), category: cleanText(body.category, 50),
       city: cleanText(body.city, 120), state: cleanText(body.state, 40), address: cleanText(body.address, 300),
-      contact: cleanText(body.contact, 120), services: cleanText(body.services, 1000), verified: true, createdAt: now()
+      contact: cleanText(body.contact, 160), services: cleanText(body.services, 1000),
+      sourceUrl: cleanText(body.sourceUrl, 1000), verified: true, createdAt: now()
     };
     if (!record.name || !record.category || !record.city || !record.state) return error(res, 400, 'Preencha nome, categoria, cidade e estado.');
+    if (!validExternalUrl(record.sourceUrl)) return error(res, 400, 'Informe um link oficial válido começando com https://.');
     list.push(record); saveState('supportPoints', list); addAdminLog(admin, `Adicionou ${record.name} à rede de apoio.`);
     return json(res, 201, record);
   }

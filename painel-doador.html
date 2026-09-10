@@ -3,10 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Painel do doador · AdotaPet</title>
+<title>Meus animais e interessados · AdotaPet</title>
 <link rel="icon" href="img/brand-symbol.png">
 <link rel="stylesheet" href="css/style.css?v=20260830-visual1">
 <link rel="stylesheet" href="css/visual.css?v=20260830-visual1">
+<link rel="stylesheet" href="css/portal.css?v=20260909-accountflow1">
 </head>
 <body>
   <a href="#main" class="skip-link">Pular para o conteúdo</a>
@@ -29,16 +30,17 @@
   </header>
 <main id="main">
 <div class="container section">
-  <span class="eyebrow">Painel do doador</span>
-  <h1>Meus anúncios e solicitações</h1>
+  <div class="dashboard-heading"><div><span class="eyebrow">Área de publicações</span><h1>Meus animais e interessados</h1><p>Gerencie suas publicações, analise os formulários recebidos e acompanhe as adoções com clareza.</p></div><div class="dashboard-actions"><a href="cadastrar-animal.html" class="btn btn-primary"><span data-icon="plus"></span>Publicar animal</a></div></div>
   <div class="chips" style="margin-top:20px;">
-    <button class="chip active" id="tab-animais">Animais publicados</button>
-    <button class="chip" id="tab-solicitacoes">Solicitações recebidas</button>
+    <button class="chip active" id="tab-animais">Meus animais</button>
+    <button class="chip" id="tab-solicitacoes">Interessados nos meus animais</button>
     <button class="chip" id="tab-desaparecidos">Desaparecidos e avistamentos</button>
     <button class="chip" id="tab-acompanhamentos">Pós-adoção</button>
   </div>
   <div id="tab-content"></div>
 </div>
+<dialog class="panel-dialog" id="profile-dialog"><div class="dialog-head"><h2 id="profile-dialog-title">Perfil do interessado</h2><button type="button" class="dialog-close" id="profile-dialog-close" aria-label="Fechar"><span data-icon="close"></span></button></div><div class="dialog-body" id="profile-dialog-body"></div><div class="dialog-actions"><button type="button" class="btn btn-outline" onclick="document.getElementById('profile-dialog').close()">Fechar</button></div></dialog>
+<dialog class="panel-dialog" id="reject-dialog"><div class="dialog-head"><h2>Reprovar solicitação</h2><button type="button" class="dialog-close" id="reject-dialog-close" aria-label="Fechar"><span data-icon="close"></span></button></div><div class="dialog-body"><p>Você pode explicar o motivo de forma respeitosa. O campo é opcional e será mostrado ao interessado.</p><input type="hidden" id="reject-request-id"><div class="form-field" style="margin-top:16px"><label for="reject-reason">Motivo da reprovação (opcional)</label><textarea id="reject-reason" rows="4" maxlength="1000" placeholder="Ex.: Neste momento, o ambiente informado não atende às necessidades deste animal."></textarea></div></div><div class="dialog-actions"><button type="button" class="btn btn-outline" id="reject-cancel">Cancelar</button><button type="button" class="btn btn-danger-soft" id="reject-confirm">Confirmar reprovação</button></div></dialog>
 </main>
   <footer class="footer">
     <div class="container">

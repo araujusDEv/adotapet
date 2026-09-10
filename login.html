@@ -1,80 +1,9 @@
-<!doctype html>
-<html lang="pt-BR">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Entrar · AdotaPet</title>
-<link rel="icon" href="img/brand-symbol.png">
-<link rel="stylesheet" href="css/style.css?v=20260830-visual1">
-<link rel="stylesheet" href="css/visual.css?v=20260830-visual1">
-</head>
-<body>
-  <a href="#main" class="skip-link">Pular para o conteúdo</a>
-  <header class="navbar">
-    <div class="container navbar-inner">
-      <a href="index.html" class="logo" aria-label="AdotaPet — início"><span class="logo-mark"><img src="img/brand-symbol.png" alt="" width="56" height="56"></span><span class="brand-word"><span class="brand-adota">Adota</span><span class="brand-pet">Pet</span></span></a>
-      <nav class="nav-links" id="nav-links">
-        <a href="index.html">Início</a>
-        <a href="adotar.html">Quero Adotar</a>
-        <a href="compatibilidade.html">Compatibilidade</a>
-        <a href="historias.html">Histórias</a>
-        <a href="desaparecidos.html">Desaparecidos</a>
-        <a href="conscientizacao.html">Conscientização</a>
-        <a href="sobre.html">Sobre</a>
-        <a href="contato.html">Contato</a>
-        <span id="nav-extra-links"></span>
-      </nav>
-      <div class="nav-actions" id="nav-actions"></div>
-    </div>
-  </header>
-<main id="main">
-<div class="container section" style="max-width:640px;">
-  <div class="form-card">
-    <span class="eyebrow">Entrar</span>
-    <h1 style="font-size:1.7rem;">Acesse sua conta</h1>
-    <div id="alert-area"></div>
-    <form id="login-form">
-      <div class="form-field"><label for="email">E-mail</label><input type="email" required id="email"></div>
-      <div class="form-field"><label for="password">Senha</label><input type="password" required id="password"></div>
-      <button class="btn btn-primary" type="submit" style="width:100%;">Entrar</button>
-    </form>
-    <p style="margin-top:16px;font-size:.9rem;">Ainda não tem conta? <a href="registro.html">Cadastre-se</a></p>
-    <p style="margin-top:6px;font-size:.78rem;">É responsável por uma ONG? Use o acesso fornecido pela administração ou crie sua conta de doador.</p>
-  </div>
-</div>
-</main>
-  <footer class="footer">
-    <div class="container">
-      <div class="footer-grid">
-        <div>
-          <div class="footer-logo"><a href="index.html" class="logo" aria-label="AdotaPet — início"><span class="logo-mark"><img src="img/brand-symbol.png" alt="" width="56" height="56"></span><span class="brand-word"><span class="brand-adota">Adota</span><span class="brand-pet">Pet</span></span></a></div>
-          <p style="color:#EAF3EF;opacity:.85;font-size:.9rem;">Plataforma de adoção de animais desenvolvida por estudantes da Escola Estadual Professor Antônio Dantas, em Apodi/RN.</p>
-        </div>
-        <div>
-          <h4>Plataforma</h4>
-          <p><a href="adotar.html">Quero Adotar</a>
-        <a href="compatibilidade.html">Compatibilidade</a>
-        <a href="historias.html">Histórias</a></p>
-          <p><a href="desaparecidos.html">Animais Desaparecidos</a></p>
-          <p><a href="conscientizacao.html">Conscientização</a></p>
-          <p><a href="sobre.html">Sobre</a></p>
-        </div>
-        <div>
-          <h4>Comunidade</h4>
-          <p><a href="cadastrar-animal.html">Cadastrar animal</a></p>
-          <p><a href="login.html">Entrar</a></p>
-          <p><a href="contato.html">Fale conosco</a></p>
-        </div>
-      </div>
-      <div class="footer-bottom">
-        <span>© 2026 AdotaPet. Todos os direitos reservados.</span>
-      </div>
-    </div>
-  </footer>
-<script src="js/store.js"></script>
-<script src="js/auth.js"></script>
-<script src="js/icons.js?v=20260830-visual1"></script>
-<script src="js/nav.js?v=20260830-visual1"></script>
-<script src="js/pages/login.js"></script>
-</body>
-</html>
+<!doctype html><html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Entrar · AdotaPet</title><meta name="description" content="Entre no AdotaPet para acompanhar adoções, publicar animais e ajudar a comunidade."><link rel="icon" href="img/brand-symbol.png"><link rel="stylesheet" href="css/style.css?v=20260909-accountflow1"><link rel="stylesheet" href="css/visual.css?v=20260909-accountflow1"><link rel="stylesheet" href="css/portal.css?v=20260909-accountflow1"></head>
+<body class="auth-page"><a href="#main" class="skip-link">Pular para o formulário</a><main id="main" class="auth-layout">
+  <section class="auth-visual" aria-label="Um novo lar começa com cuidado"><img src="img/hero-adocao.jpg" alt="Cachorro brincando em seu novo lar"><div class="auth-visual-content"><a class="auth-brand" href="index.html"><img src="img/brand-symbol.png" alt=""><span>Adota<em>Pet</em></span></a><div class="auth-quote"><h1>Histórias novas começam com um encontro.</h1><p>Acompanhe solicitações, publique animais e participe de uma rede local de adoção responsável.</p></div></div></section>
+  <section class="auth-main"><div class="auth-card"><a class="auth-back" href="index.html"><span data-icon="arrow"></span>Voltar ao início</a><span class="eyebrow">Bem-vindo de volta</span><h1>Acesse sua conta</h1><p class="auth-subtitle">Entre para continuar cuidando de cada etapa da adoção.</p><div id="alert-area" aria-live="polite"></div>
+    <form id="login-form"><div class="form-field"><label for="email">E-mail</label><input type="email" autocomplete="email" required id="email" placeholder="voce@exemplo.com"></div><div class="form-field password-control"><label for="password">Senha</label><input type="password" autocomplete="current-password" required id="password"><button class="password-toggle" type="button" data-password-target="password" aria-label="Mostrar senha"><span data-icon="eye"></span></button></div><div class="auth-options"><label class="check-row"><input type="checkbox" id="remember"><span>Lembrar de mim por 7 dias</span></label><button type="button" class="link-button" id="forgot-toggle">Esqueci minha senha</button></div><button class="btn btn-primary auth-submit" id="login-submit" type="submit">Entrar</button></form>
+    <form id="forgot-form" hidden><div class="auth-notice">Informe seu e-mail. Para proteger sua conta, a mensagem será sempre a mesma, exista ou não um cadastro.</div><div class="form-field" style="margin-top:16px"><label for="forgot-email">E-mail da conta</label><input type="email" autocomplete="email" required id="forgot-email"></div><button class="btn btn-primary auth-submit" id="forgot-submit" type="submit">Solicitar recuperação</button><button type="button" class="link-button" id="login-back" style="margin-top:16px">Voltar para entrar</button></form>
+    <p style="margin-top:20px;font-size:.9rem">Ainda não tem conta? <a href="registro.html">Crie sua conta gratuitamente</a>.</p>
+  </div></section>
+</main><script src="js/store.js?v=20260909-accountflow1"></script><script src="js/auth.js?v=20260909-accountflow1"></script><script src="js/icons.js?v=20260909-accountflow1"></script><script src="js/nav.js?v=20260909-accountflow1"></script><script src="js/pages/login.js?v=20260909-accountflow1"></script></body></html>
