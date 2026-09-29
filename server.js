@@ -15,6 +15,12 @@ const HOST = process.env.HOST || '0.0.0.0';
 const SESSION_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 const BODY_LIMIT = 12 * 1024 * 1024;
 const RATE_LIMITS = new Map();
+setInterval(() => {
+  const time = Date.now();
+  for (const [key, entry] of RATE_LIMITS) {
+    if (entry.resetAt <= time) RATE_LIMITS.delete(key);
+  }
+}, 15 * 60 * 1000).unref();
 let bootstrapCredentials = null;
 
 fs.mkdirSync(DATA_DIR, { recursive: true });
@@ -40,6 +46,10 @@ db.exec(`
     created_at TEXT NOT NULL,
     FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
   );
+  CREATE TABLE IF NOT EXISTS id_sequences (
+    collection TEXT PRIMARY KEY,
+    last_id INTEGER NOT NULL
+  );
   CREATE TABLE IF NOT EXISTS app_state (
     key TEXT PRIMARY KEY,
     value TEXT NOT NULL,
@@ -61,7 +71,7 @@ db.prepare(`UPDATE users SET account_type = CASE role WHEN 'admin' THEN 'admin' 
             WHERE account_type IS NULL OR account_type = '' OR (account_type = 'usuario' AND role IN ('admin','doador'))`).run();
 db.prepare(`UPDATE users SET approval_status='aprovado' WHERE approval_status IS NULL OR approval_status=''`).run();
 
-const COLLECTIONS = ['animals', 'missing', 'sightings', 'requests', 'favorites', 'reports', 'adoptionProfiles', 'notifications', 'adminLog', 'contracts', 'followups', 'supportPoints'];
+const COLLECTIONS = ['animals', 'missing', 'sightings', 'requests', 'favorites', 'reports', 'adoptionProfiles', 'notifications', 'adminLog', 'contracts', 'followups', 'supportPoints', 'campaigns'];
 
 function now() { return new Date().toISOString(); }
 function cleanText(value, max = 5000) {
@@ -127,8 +137,39 @@ function saveState(key, value) {
               ON CONFLICT(key) DO UPDATE SET value=excluded.value, updated_at=excluded.updated_at`)
     .run(key, JSON.stringify(value), now());
 }
-function newId(list) {
-  return list.length ? Math.max(...list.map(x => Number(x.id) || 0)) + 1 : 1;
+function highestKnownId(collection) {
+  if (!COLLECTIONS.includes(collection)) throw new Error('Coleção inválida.');
+  let highest = 0;
+  const include = value => {
+    const id = Number(value);
+    if (Number.isSafeInteger(id) && id > highest) highest = id;
+  };
+  for (const record of loadState(collection)) include(record.id);
+  // Reserve IDs still referenced in databases created before persistent counters.
+  const references = {
+    animals: [['campaigns', 'animalId'], ['requests', 'animalId'], ['favorites', 'animalId'], ['contracts', 'animalId'], ['followups', 'animalId']],
+    requests: [['contracts', 'requestId'], ['followups', 'requestId']],
+    missing: [['sightings', 'missingAnimalId']]
+  };
+  for (const [key, field] of references[collection] || []) {
+    for (const record of loadState(key)) include(record[field]);
+  }
+  if (collection === 'animals' || collection === 'missing') {
+    for (const report of loadState('reports')) {
+      if (report.target_type === (collection === 'animals' ? 'animal' : 'missing')) include(report.target_id);
+    }
+  }
+  return highest;
+}
+function newId(collection) {
+  const highest = highestKnownId(collection);
+  // The counter advances atomically and survives deletion and server restarts.
+  const row = db.prepare(
+    'INSERT INTO id_sequences(collection, last_id) VALUES (?, ?) ' +
+    'ON CONFLICT(collection) DO UPDATE SET last_id = MAX(last_id + 1, excluded.last_id) RETURNING last_id'
+  ).get(collection, highest + 1);
+  if (!Number.isSafeInteger(row.last_id)) throw new Error('Limite de identificadores atingido.');
+  return row.last_id;
 }
 function getAnimal(id) { return loadState('animals').find(a => a.id === Number(id)) || null; }
 function getMissing(id) { return loadState('missing').find(m => m.id === Number(id)) || null; }
@@ -136,13 +177,13 @@ function getRequest(id) { return loadState('requests').find(r => r.id === Number
 function addNotification(userId, message) {
   if (!userId) return;
   const list = loadState('notifications');
-  list.push({ id: newId(list), userId: Number(userId), message: cleanText(message, 1000), read: false, createdAt: now() });
+  list.push({ id: newId('notifications'), userId: Number(userId), message: cleanText(message, 1000), read: false, createdAt: now() });
   saveState('notifications', list);
 }
 function addAdminLog(admin, message) {
   if (!admin || admin.role !== 'admin') return;
   const list = loadState('adminLog');
-  list.push({ id: newId(list), adminId: admin.id, adminName: admin.name, message: cleanText(message, 1500), createdAt: now() });
+  list.push({ id: newId('adminLog'), adminId: admin.id, adminName: admin.name, message: cleanText(message, 1500), createdAt: now() });
   saveState('adminLog', list);
 }
 function canManageAnimal(user, animal) {
@@ -161,7 +202,12 @@ function canManageRequest(user, request) {
   if (!user || !request) return false;
   if (user.role === 'admin') return true;
   const animal = getAnimal(request.animalId);
-  return Boolean(animal && Number(animal.ownerId) === user.id && canPublish(user));
+  if (!animal || Number(animal.ownerId) !== user.id || !canPublish(user)) return false;
+  if (request.ownerId !== undefined) return Number(request.ownerId) === user.id;
+  // Older requests must not grant access to an animal created after the request.
+  const requestedAt = Date.parse(request.createdAt);
+  const animalCreatedAt = Date.parse(animal.createdAt);
+  return Number.isFinite(requestedAt) && Number.isFinite(animalCreatedAt) && requestedAt >= animalCreatedAt;
 }
 function recalcAnimalProcessStatus(animalId) {
   const animals = loadState('animals');
@@ -217,13 +263,19 @@ function ensureSeed() {
         cleanText(point.name, 160).toLowerCase() === cleanText(seededPoint.name, 160).toLowerCase() &&
         cleanText(point.city, 120).toLowerCase() === cleanText(seededPoint.city, 120).toLowerCase()
       );
-      if (!alreadyExists) current.push({ ...seededPoint, id: newId(current) });
+      if (!alreadyExists) current.push({ ...seededPoint, id: newId('supportPoints') });
     }
     saveState('supportPoints', current);
     saveState(supportMigrationKey, { appliedAt: now() });
   }
 }
 ensureSeed();
+// Capture existing IDs before any record can be deleted on an upgraded database.
+const initializeSequence = db.prepare(
+  'INSERT INTO id_sequences(collection, last_id) VALUES (?, ?) ' +
+  'ON CONFLICT(collection) DO UPDATE SET last_id = MAX(last_id, excluded.last_id)'
+);
+for (const collection of COLLECTIONS) initializeSequence.run(collection, highestKnownId(collection));
 
 function migrateLegacyState() {
   const requests = loadState('requests');
@@ -255,7 +307,16 @@ migrateLegacyState();
 db.exec('PRAGMA optimize;');
 db.prepare('DELETE FROM sessions WHERE created_at < ?').run(new Date(Date.now() - SESSION_MAX_AGE_MS).toISOString());
 
+function securityHeaders(res) {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('Referrer-Policy', 'same-origin');
+  res.setHeader('Cache-Control', 'no-store');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('Content-Security-Policy', "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; object-src 'none'; frame-ancestors 'none'");
+  if (process.env.COOKIE_SECURE === '1') res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+}
 function json(res, status, payload) {
+  securityHeaders(res);
   const body = JSON.stringify(payload);
   res.writeHead(status, {
     'Content-Type': 'application/json; charset=utf-8',
@@ -281,7 +342,11 @@ function readBody(req) {
     });
     req.on('end', () => {
       if (!data) return resolve({});
-      try { resolve(JSON.parse(data)); }
+      try {
+        const body = JSON.parse(data);
+        if (!body || typeof body !== 'object' || Array.isArray(body)) throw new Error('Objeto JSON esperado.');
+        resolve(body);
+      }
       catch { reject(Object.assign(new Error('JSON inválido.'), { status: 400 })); }
     });
     req.on('error', reject);
@@ -292,7 +357,7 @@ function tokenFrom(req) {
   if (auth.startsWith('Bearer ')) return auth.slice(7).trim();
   const cookie = req.headers.cookie || '';
   const match = cookie.match(/(?:^|;\s*)petadopt_session=([^;]+)/);
-  return match ? decodeURIComponent(match[1]) : '';
+  try { return match ? decodeURIComponent(match[1]) : ''; } catch { return ''; }
 }
 function setSessionCookie(res, token, remember = false) {
   const secure = process.env.COOKIE_SECURE === '1' ? '; Secure' : '';
@@ -330,6 +395,63 @@ function createSession(userId) {
   return token;
 }
 
+function campaignView(campaign, admin = false) {
+  const animal = getAnimal(campaign.animalId);
+  const visibleAnimal = animal && ['disponivel', 'em_processo', 'adotado'].includes(animal.status);
+  const canDonate = campaign.status === 'active' && Boolean(visibleAnimal);
+  const { createdBy, ...publicFields } = campaign;
+  return { ...publicFields, pixKey: admin || canDonate ? campaign.pixKey : '', canDonate,
+    animalName: visibleAnimal || admin ? animal?.name || campaign.animalName : campaign.animalName,
+    animalUrl: visibleAnimal ? `animal.html?id=${campaign.animalId}` : null,
+    ...(admin ? { createdBy } : {}) };
+}
+function campaignData(body, previous = null) {
+  const fields = ['title', 'description', 'category', 'organizer', 'beneficiary', 'contact', 'pixKeyType', 'pixKey', 'status', 'goalCents', 'raisedCents'];
+  const data = previous ? { ...previous } : { raisedCents: 0, status: 'draft' };
+  for (const field of fields) if (Object.hasOwn(body, field)) data[field] = body[field];
+  const invalid = message => { throw Object.assign(new Error(message), { status: 400 }); };
+  for (const [key, max] of Object.entries({ title: 120, description: 4000, organizer: 120, beneficiary: 120, contact: 160, pixKey: 254 })) {
+    if (typeof data[key] !== 'string' || data[key].length > max) invalid(`Confira o campo ${key}.`);
+    data[key] = cleanText(data[key], max);
+  }
+  if (data.title.length < 5 || data.description.length < 30 || !data.organizer || !data.beneficiary || !data.contact) invalid('Preencha o título, a história do pet, o responsável, o beneficiário e o contato.');
+  if (!['cirurgia', 'tratamento', 'alimentacao', 'acolhimento'].includes(data.category)) invalid('Escolha a finalidade da campanha.');
+  if (!['draft', 'active', 'closed'].includes(data.status)) invalid('Situação da campanha inválida.');
+  if (!Number.isSafeInteger(data.goalCents) || data.goalCents < 100 || data.goalCents > 100000000 ||
+      !Number.isSafeInteger(data.raisedCents) || data.raisedCents < 0 || data.raisedCents > 100000000) invalid('Informe valores válidos, entre R$ 1 e R$ 1.000.000 para a meta.');
+  if (['cpf', 'cnpj'].includes(data.pixKeyType)) data.pixKey = data.pixKey.replace(/[.\-/\s]/g, '');
+  if (data.pixKeyType === 'email') data.pixKey = data.pixKey.toLowerCase();
+  const keyValid = data.pixKeyType === 'email' ? validEmail(data.pixKey)
+    : data.pixKeyType === 'telefone' ? /^\+[1-9]\d{9,14}$/.test(data.pixKey)
+    : data.pixKeyType === 'cpf' ? /^\d{11}$/.test(data.pixKey)
+    : data.pixKeyType === 'cnpj' ? /^\d{14}$/.test(data.pixKey)
+    : data.pixKeyType === 'aleatoria' ? /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(data.pixKey) : false;
+  if (!keyValid) invalid('A chave Pix não corresponde ao tipo escolhido. Telefone deve incluir + e código do país.');
+  if ((!previous || data.pixKey !== previous.pixKey || data.pixKeyType !== previous.pixKeyType || data.beneficiary !== previous.beneficiary) && body.recipientConfirmed !== true) invalid('Confirme o beneficiário e a autorização para publicar a chave Pix.');
+  if (!previous) {
+    const animal = Number.isSafeInteger(body.animalId) ? getAnimal(body.animalId) : null;
+    if (!animal || !['disponivel', 'em_processo', 'adotado'].includes(animal.status)) invalid('Selecione um animal com perfil público.');
+    data.animalId = animal.id;
+    data.animalName = animal.name;
+    data.city = animal.city;
+    data.state = animal.state;
+    const photo = animal.photos?.[0] || '';
+    data.photo = /^(img\/[A-Za-z0-9._/-]+|data:image\/(png|jpe?g|webp);base64,[A-Za-z0-9+/=\r\n]+)$/i.test(photo) && photo.length <= 3 * 1024 * 1024 ? photo : '';
+    data.updates = [];
+  }
+  if (data.status === 'active') {
+    const animal = getAnimal(data.animalId);
+    if (!animal || !['disponivel', 'em_processo', 'adotado'].includes(animal.status)) invalid('O perfil do animal precisa estar público para receber doações.');
+  }
+  if (data.raisedCents !== (previous?.raisedCents || 0)) {
+    const note = cleanText(body.progressNote, 1000);
+    if (note.length < 10) invalid('Explique a atualização do valor arrecadado para os apoiadores.');
+    data.updates = [...(data.updates || []), { raisedCents: data.raisedCents, note, createdAt: now() }].slice(-50);
+  }
+  return data;
+}
+
+
 async function handleApi(req, res, url) {
   const method = req.method || 'GET';
   const pathname = url.pathname;
@@ -345,6 +467,8 @@ async function handleApi(req, res, url) {
     const requests = loadState('requests');
     const followups = loadState('followups');
     return json(res, 200, {
+      users: db.prepare('SELECT COUNT(*) AS n FROM users').get().n,
+      organizations: db.prepare("SELECT COUNT(*) AS n FROM users WHERE role = 'doador'").get().n,
       available: animals.filter(a => a.status === 'disponivel').length,
       adopted: animals.filter(a => a.status === 'adotado').length,
       urgent: animals.filter(a => a.status === 'disponivel' && (a.special_needs || a.age_group === 'idoso' || (Date.now() - new Date(a.createdAt).getTime()) > 60 * 86400000)).length,
@@ -423,7 +547,7 @@ async function handleApi(req, res, url) {
       const target = db.prepare('SELECT id,name,email FROM users WHERE email=? COLLATE NOCASE').get(email);
       if (target) {
         const reports = loadState('reports');
-        reports.push({ id: newId(reports), reporterUserId: target.id, target_type: 'usuario', target_id: target.id, category: 'recuperacao_senha', reason: `Pedido de recuperação de acesso para ${target.email}.`, status: 'aberta', createdAt: now() });
+        reports.push({ id: newId('reports'), reporterUserId: target.id, target_type: 'usuario', target_id: target.id, category: 'recuperacao_senha', reason: `Pedido de recuperação de acesso para ${target.email}.`, status: 'aberta', createdAt: now() });
         saveState('reports', reports);
         db.prepare("SELECT id FROM users WHERE role='admin'").all().forEach(admin => addNotification(admin.id, `Pedido de recuperação de acesso: ${target.name}.`));
       }
@@ -445,8 +569,18 @@ async function handleApi(req, res, url) {
     return json(res, 200, { ok: true });
   }
 
+  match = pathname.match(/^\/api\/animals\/(\d+)\/public-name$/);
+  if (method === 'GET' && match) {
+    const animal = getAnimal(match[1]);
+    const user = authUser(req);
+    if (!animal || (!['disponivel', 'em_processo', 'adotado'].includes(animal.status) && !canManageAnimal(user, animal)))
+      return error(res, 404, 'Animal não encontrado.');
+    const owner = db.prepare('SELECT name FROM users WHERE id = ?').get(Number(animal.ownerId));
+    return json(res, 200, { name: owner?.name || '' });
+  }
+
   if (method === 'GET' && pathname === '/api/users') {
-    const requester = authUser(req);
+    const requester = requireUser(req, res, ['admin']); if (!requester) return;
     const includePrivate = requester?.role === 'admin';
     const rows = db.prepare('SELECT * FROM users ORDER BY id').all();
     return json(res, 200, rows.map(r => publicUser(r, includePrivate)));
@@ -510,13 +644,14 @@ async function handleApi(req, res, url) {
   }
 
   if (method === 'POST' && pathname === '/api/animals') {
+    if (rateLimit(req, res, 'animals-create', 30, 10 * 60 * 1000)) return;
     const user = requireUser(req, res); if (!user) return;
     if (!canPublish(user)) return error(res, 403, 'Sua conta ainda não tem permissão para publicar animais.');
     const body = await readBody(req);
     const list = loadState('animals');
-    const photos = Array.isArray(body.photos) ? body.photos.filter(p => typeof p === 'string' && (p.startsWith('data:image/') || p.startsWith('img/'))).slice(0, 3) : [];
+    const photos = Array.isArray(body.photos) ? body.photos.filter(p => typeof p === 'string' && (p.startsWith('data:image/') || p.startsWith('img/'))).slice(0, 3).map(p => p.slice(0, 3 * 1024 * 1024)) : [];
     const record = {
-      id: newId(list),
+      id: newId('animals'),
       name: cleanText(body.name, 120), species: body.species === 'gato' ? 'gato' : 'cachorro',
       breed: cleanText(body.breed, 120), sex: body.sex === 'femea' ? 'femea' : 'macho',
       size: ['pequeno','medio','grande'].includes(body.size) ? body.size : 'medio',
@@ -538,6 +673,7 @@ async function handleApi(req, res, url) {
 
   match = pathname.match(/^\/api\/animals\/(\d+)\/view$/);
   if (method === 'POST' && match) {
+    if (rateLimit(req, res, 'animals-view', 30, 10 * 60 * 1000)) return;
     const id = Number(match[1]); const list = loadState('animals'); const idx = list.findIndex(a => a.id === id);
     if (idx < 0) return error(res, 404, 'Animal não encontrado.');
     list[idx].views = (Number(list[idx].views) || 0) + 1; saveState('animals', list);
@@ -565,7 +701,7 @@ async function handleApi(req, res, url) {
     if (Object.prototype.hasOwnProperty.call(body, 'size') && ['pequeno','medio','grande'].includes(body.size)) list[idx].size = body.size;
     if (Object.prototype.hasOwnProperty.call(body, 'age_group') && ['filhote','adulto','idoso'].includes(body.age_group)) list[idx].age_group = body.age_group;
     if (Array.isArray(body.photos)) {
-      const photos = body.photos.filter(p => typeof p === 'string' && (p.startsWith('data:image/') || p.startsWith('img/'))).slice(0, 3);
+      const photos = body.photos.filter(p => typeof p === 'string' && (p.startsWith('data:image/') || p.startsWith('img/'))).slice(0, 3).map(p => p.slice(0, 3 * 1024 * 1024));
       if (photos.length) list[idx].photos = photos;
     }
     for (const key of ['neutered','vaccinated','dewormed']) if (Object.prototype.hasOwnProperty.call(body, key)) list[idx][key] = Boolean(body[key]);
@@ -609,6 +745,7 @@ async function handleApi(req, res, url) {
   }
 
   if (method === 'POST' && pathname === '/api/requests') {
+    if (rateLimit(req, res, 'requests-create', 30, 10 * 60 * 1000)) return;
     const user = requireUser(req, res); if (!user) return;
     const body = await readBody(req); const animal = getAnimal(body.animalId);
     if (!animal) return error(res, 404, 'Animal não encontrado.');
@@ -619,7 +756,7 @@ async function handleApi(req, res, url) {
       return error(res, 409, 'Você já possui uma solicitação ativa para este animal.');
     }
     const record = {
-      id: newId(list), animalId: animal.id, requesterId: user.id,
+      id: newId('requests'), animalId: animal.id, requesterId: user.id, ownerId: Number(animal.ownerId),
       full_name: cleanText(body.full_name || user.name, 120), age: cleanText(body.age, 10), city: cleanText(body.city, 120),
       housing: cleanText(body.housing, 50), has_yard: Boolean(body.has_yard), has_pets: Boolean(body.has_pets), experience: Boolean(body.experience),
       reason: cleanText(body.reason, 2000), responsibility_confirmed: Boolean(body.responsibility_confirmed),
@@ -711,7 +848,7 @@ async function handleApi(req, res, url) {
       const adopter = db.prepare('SELECT * FROM users WHERE id=?').get(request.requesterId);
       const owner = db.prepare('SELECT * FROM users WHERE id=?').get(animal.ownerId);
       contracts.push({
-        id: newId(contracts), requestId: id, code: `ADT-${id}-${Date.now().toString(36).toUpperCase()}`,
+        id: newId('contracts'), requestId: id, code: `ADT-${id}-${Date.now().toString(36).toUpperCase()}`,
         animalId: animal.id, animalName: animal.name, species: animal.species, breed: animal.breed || '',
         adopterId: adopter?.id || request.requesterId, adopterName: adopter?.name || request.full_name, adopterCity: adopter?.city || request.city || '',
         ownerId: owner?.id || animal.ownerId, ownerName: owner?.name || 'Responsável pelo animal', ownerCity: owner?.city || animal.city || '',
@@ -745,6 +882,7 @@ async function handleApi(req, res, url) {
     return json(res, 200, loadState('favorites').filter(f => f.userId === user.id));
   }
   if (method === 'POST' && pathname === '/api/favorites/toggle') {
+    if (rateLimit(req, res, 'favorites-toggle', 30, 10 * 60 * 1000)) return;
     const user = requireUser(req, res); if (!user) return;
     const body = await readBody(req); const animalId = Number(body.animalId);
     if (!getAnimal(animalId)) return error(res, 404, 'Animal não encontrado.');
@@ -756,11 +894,12 @@ async function handleApi(req, res, url) {
 
   if (method === 'GET' && pathname === '/api/missing') return json(res, 200, loadState('missing'));
   if (method === 'POST' && pathname === '/api/missing') {
+    if (rateLimit(req, res, 'missing-create', 30, 10 * 60 * 1000)) return;
     const user = requireUser(req, res); if (!user) return;
     const body = await readBody(req); const list = loadState('missing');
     const photo = typeof body.photo === 'string' && (body.photo.startsWith('data:image/') || body.photo.startsWith('img/')) ? body.photo : null;
     const record = {
-      id: newId(list), ownerId: user.id, name: cleanText(body.name, 120), species: body.species === 'gato' ? 'gato' : 'cachorro',
+      id: newId('missing'), ownerId: user.id, name: cleanText(body.name, 120), species: body.species === 'gato' ? 'gato' : 'cachorro',
       breed: cleanText(body.breed, 120), color: cleanText(body.color, 120), approx_age: cleanText(body.approx_age, 80),
       missing_date: cleanText(body.missing_date, 20), last_seen_location: cleanText(body.last_seen_location, 300), city: cleanText(body.city, 120),
       state: cleanText(body.state, 40), contact: cleanText(body.contact, 120), features: cleanText(body.features, 1600), reward: cleanText(body.reward, 120),
@@ -790,7 +929,7 @@ async function handleApi(req, res, url) {
     if (!missing) return error(res, 404, 'Registro de animal desaparecido não encontrado.');
     if (missing.found) return error(res, 409, 'Este animal já foi marcado como encontrado.');
     const list = loadState('sightings');
-    const record = { id: newId(list), missingAnimalId: missing.id, reporter_name: cleanText(body.reporter_name, 120), reporter_contact: cleanText(body.reporter_contact, 120), location: cleanText(body.location, 300), message: cleanText(body.message, 2000), createdAt: now() };
+    const record = { id: newId('sightings'), missingAnimalId: missing.id, reporter_name: cleanText(body.reporter_name, 120), reporter_contact: cleanText(body.reporter_contact, 120), location: cleanText(body.location, 300), message: cleanText(body.message, 2000), createdAt: now() };
     if (!record.location) return error(res, 400, 'Informe onde o animal foi visto.');
     list.push(record); saveState('sightings', list);
     if (missing.ownerId) addNotification(missing.ownerId, `Novo avistamento informado para ${missing.name || 'seu animal desaparecido'} em ${record.location}.`);
@@ -805,7 +944,7 @@ async function handleApi(req, res, url) {
   if (method === 'POST' && pathname === '/api/reports') {
     if (rateLimit(req, res, 'reports', 12, 10 * 60 * 1000)) return;
     const body = await readBody(req); const user = authUser(req); const list = loadState('reports');
-    const record = { id: newId(list), reporterUserId: user?.id || null, target_type: cleanText(body.target_type, 30) || 'outro', target_id: body.target_id ? Number(body.target_id) : null, category: cleanText(body.category, 50) || 'outro', reason: cleanText(body.reason, 3000), status: 'aberta', createdAt: now() };
+    const record = { id: newId('reports'), reporterUserId: user?.id || null, target_type: cleanText(body.target_type, 30) || 'outro', target_id: body.target_id ? Number(body.target_id) : null, category: cleanText(body.category, 50) || 'outro', reason: cleanText(body.reason, 3000), status: 'aberta', createdAt: now() };
     if (!record.reason) return error(res, 400, 'Informe os detalhes da mensagem/denúncia.');
     list.push(record); saveState('reports', list); return json(res, 201, record);
   }
@@ -891,7 +1030,7 @@ async function handleApi(req, res, url) {
     const list = loadState('followups');
     if (list.some(f => f.requestId === request.id && f.day === day)) return error(res, 409, 'Este acompanhamento já foi enviado.');
     const record = {
-      id: newId(list), requestId: request.id, animalId: request.animalId, adopterId: user.id, day,
+      id: newId('followups'), requestId: request.id, animalId: request.animalId, adopterId: user.id, day,
       adaptation: ['otima','boa','dificil'].includes(body.adaptation) ? body.adaptation : 'boa',
       health: cleanText(body.health, 1200), behavior: cleanText(body.behavior, 1200), needsHelp: Boolean(body.needsHelp),
       photo: typeof body.photo === 'string' && /^data:image\/(png|jpe?g|webp);base64,/i.test(body.photo) ? body.photo.slice(0, 4 * 1024 * 1024) : null,
@@ -908,7 +1047,7 @@ async function handleApi(req, res, url) {
     const admin = requireUser(req, res, ['admin']); if (!admin) return;
     const body = await readBody(req); const list = loadState('supportPoints');
     const record = {
-      id: newId(list), name: cleanText(body.name, 160), category: cleanText(body.category, 50),
+      id: newId('supportPoints'), name: cleanText(body.name, 160), category: cleanText(body.category, 50),
       city: cleanText(body.city, 120), state: cleanText(body.state, 40), address: cleanText(body.address, 300),
       contact: cleanText(body.contact, 160), services: cleanText(body.services, 1000),
       sourceUrl: cleanText(body.sourceUrl, 1000), verified: true, createdAt: now()
@@ -927,6 +1066,36 @@ async function handleApi(req, res, url) {
     return json(res, 200, { ok: true });
   }
 
+  if (method === 'GET' && pathname === '/api/campaigns') {
+    const admin = authUser(req)?.role === 'admin';
+    const campaigns = loadState('campaigns').filter(c => admin || c.status !== 'draft');
+    return json(res, 200, campaigns.map(c => campaignView(c, admin)));
+  }
+  if (method === 'POST' && pathname === '/api/campaigns') {
+    if (rateLimit(req, res, 'campaigns-write', 30, 10 * 60 * 1000)) return;
+    const admin = requireUser(req, res, ['admin']); if (!admin) return;
+    const body = await readBody(req);
+    const data = campaignData(body);
+    const record = { ...data, id: newId('campaigns'), revision: 1, createdBy: admin.id, createdAt: now(), updatedAt: now() };
+    const campaigns = loadState('campaigns'); campaigns.push(record); saveState('campaigns', campaigns);
+    addAdminLog(admin, `Criou a campanha de arrecadação #${record.id}: ${record.title}.`);
+    return json(res, 201, campaignView(record, true));
+  }
+  match = pathname.match(/^\/api\/campaigns\/(\d+)$/);
+  if (method === 'PATCH' && match) {
+    if (rateLimit(req, res, 'campaigns-write', 30, 10 * 60 * 1000)) return;
+    const admin = requireUser(req, res, ['admin']); if (!admin) return;
+    const body = await readBody(req);
+    const campaigns = loadState('campaigns'); const index = campaigns.findIndex(c => c.id === Number(match[1]));
+    if (index < 0) return error(res, 404, 'Campanha não encontrada.');
+    const previous = campaigns[index];
+    if (body.revision !== previous.revision) return error(res, 409, 'Esta campanha foi alterada. Recarregue a página antes de salvar.');
+    const record = { ...campaignData(body, previous), revision: previous.revision + 1, updatedAt: now() };
+    campaigns[index] = record; saveState('campaigns', campaigns);
+    addAdminLog(admin, `Atualizou a campanha #${record.id}: ${record.title}. Situação: ${record.status}; total informado: ${record.raisedCents} centavos.`);
+    return json(res, 200, campaignView(record, true));
+  }
+
   return error(res, 404, 'Rota da API não encontrada.');
 }
 
@@ -936,6 +1105,7 @@ const MIME = {
   '.woff2':'font/woff2', '.woff':'font/woff', '.ttf':'font/ttf'
 };
 function serveStatic(req, res, url) {
+  securityHeaders(res);
   let rel = decodeURIComponent(url.pathname);
   if (rel === '/') rel = '/index.html';
   const target = path.resolve(ROOT, '.' + rel);
@@ -945,8 +1115,13 @@ function serveStatic(req, res, url) {
     return res.end('Acesso negado.');
   }
   const normalized = relative.split(path.sep).join('/').toLowerCase();
-  const protectedFiles = new Set(['server.js', 'package.json', 'iniciar.bat', 'iniciar.sh', 'readme.md', 'relatorio_correcoes.md']);
-  if (normalized.startsWith('data/') || protectedFiles.has(normalized)) {
+  const allowedExtensions = new Set(Object.keys(MIME));
+  const segments = normalized.split('/');
+  // Only front-end locations are public, even for allowed extensions.
+  const publicLocation = (segments.length === 1 && path.extname(normalized) === '.html') ||
+    ['js', 'css', 'img', 'fonts'].includes(segments[0]);
+  if (segments.some(part => part.startsWith('.')) || normalized === 'data' || normalized.startsWith('data/') ||
+      !publicLocation || !allowedExtensions.has(path.extname(normalized))) {
     res.writeHead(403, { 'Content-Type':'text/plain; charset=utf-8' });
     return res.end('Acesso negado.');
   }
@@ -960,19 +1135,27 @@ function serveStatic(req, res, url) {
       'Cache-Control': ['.html', '.js', '.css'].includes(ext) ? 'no-cache' : 'public, max-age=3600'
     });
     if (req.method === 'HEAD') return res.end();
-    fs.createReadStream(target).pipe(res);
+    const stream = fs.createReadStream(target);
+    stream.on('error', () => {
+      if (!res.headersSent) error(res, 404, 'Arquivo não encontrado.');
+      else res.destroy();
+    });
+    res.on('close', () => stream.destroy());
+    stream.pipe(res);
   });
 }
 
 const server = http.createServer(async (req, res) => {
-  const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
   try {
+    const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
     if (url.pathname.startsWith('/api/')) return await handleApi(req, res, url);
     if (!['GET','HEAD'].includes(req.method)) return error(res, 405, 'Método não permitido.');
     return serveStatic(req, res, url);
   } catch (err) {
-    console.error(err);
-    if (!res.headersSent) error(res, err.status || 500, err.status ? err.message : 'Erro interno do servidor.');
+    const malformed = err.code === 'ERR_INVALID_URL' || err instanceof URIError;
+    const status = malformed ? 400 : (err.status || 500);
+    if (status >= 500) console.error(err);
+    if (!res.headersSent) error(res, status, malformed ? 'Requisição inválida.' : err.status ? err.message : 'Erro interno do servidor.');
     else res.end();
   }
 });

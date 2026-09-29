@@ -325,6 +325,8 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
 .support-card h2 { font-size: 1.25rem; margin-top: 14px; }
 .support-card-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
 .support-contact { font-weight: 600; color: var(--color-primary-dark); }
+.support-source { display: inline-flex; align-items: center; gap: 7px; margin-top: 4px; color: var(--color-primary-dark); font-size: .88rem; font-weight: 700; text-decoration: underline; text-underline-offset: 3px; }
+.support-source .icon { width: 17px; height: 17px; flex: 0 0 auto; }
 .support-suggest { margin-top: 28px; padding: 28px; text-align: center; }
 
 .impact-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 16px; margin: 28px 0 34px; }

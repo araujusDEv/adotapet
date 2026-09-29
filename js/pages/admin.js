@@ -1,22 +1,24 @@
 let adminUser = null;
 
 function renderStats() {
+  const users = Store.getUsers();
   const animals = Store.getAnimals();
   const requests = Store.getRequests();
-  const acceptedWithDate = requests.filter(r => r.status === 'aceita' && r.acceptedAt && r.createdAt);
+  const acceptedWithDate = requests.filter(r => r.status === 'concluida' && (r.completedAt || r.acceptedAt) && r.createdAt);
   const avgDays = acceptedWithDate.length
     ? Math.round(acceptedWithDate.reduce((sum, r) => {
-        const ms = new Date(r.acceptedAt).getTime() - new Date(r.createdAt).getTime();
+        const ms = new Date(r.completedAt || r.acceptedAt).getTime() - new Date(r.createdAt).getTime();
         return sum + Math.max(0, ms / 86400000);
       }, 0) / acceptedWithDate.length)
     : null;
 
   const stats = {
-    totalUsers: Store.getUsers().length,
+    totalUsers: users.length,
     totalAnimals: animals.length,
     adopted: animals.filter(a => a.status === 'adotado').length,
     pendingAnimals: animals.filter(a => a.status === 'aguardando_aprovacao').length,
-    pendingRequests: requests.filter(r => r.status === 'pendente').length,
+    pendingRequests: requests.filter(r => ['pendente','em_analise'].includes(r.status)).length,
+    pendingOrganizations: users.filter(u => u.accountType === 'ong' && u.approvalStatus === 'pendente').length,
     missing: Store.getMissing().filter(m => !m.found).length,
     openReports: Store.getReports().filter(r => r.status === 'aberta').length,
     verified: animals.filter(a => a.verified).length
@@ -28,6 +30,7 @@ function renderStats() {
     <div class="dashboard-stat"><b>${stats.verified}</b>Perfis verificados</div>
     <div class="dashboard-stat"><b>${stats.pendingAnimals}</b>Anúncios pendentes</div>
     <div class="dashboard-stat"><b>${stats.pendingRequests}</b>Solicitações pendentes</div>
+    <div class="dashboard-stat"><b>${stats.pendingOrganizations}</b>ONGs aguardando análise</div>
     <div class="dashboard-stat"><b>${stats.missing}</b>Animais desaparecidos</div>
     <div class="dashboard-stat"><b>${stats.openReports}</b>Denúncias/mensagens abertas</div>
     <div class="dashboard-stat"><b>${avgDays !== null ? avgDays : '-'}</b>Dias médios da solicitação à adoção</div>`;
@@ -43,8 +46,8 @@ function renderPendentesTab() {
     <tbody>${pending.map(a => {
       const owner = users.find(u => u.id === a.ownerId);
       return `<tr><td>${escapeHTML(a.name)}</td><td>${escapeHTML(owner ? owner.name : '-')}</td><td>${escapeHTML(a.city)}</td>
-        <td><button class="btn btn-primary btn-sm" onclick="approveAnimal(${Number(a.id)})">Aprovar</button>
-        <button class="btn btn-outline btn-sm" onclick="rejectAnimal(${Number(a.id)})">Recusar</button></td></tr>`;
+        <td><button class="btn btn-primary btn-sm" data-action="approveAnimal" data-arg-0="${Number(a.id)}">Aprovar</button>
+        <button class="btn btn-outline btn-sm" data-action="rejectAnimal" data-arg-0="${Number(a.id)}">Recusar</button></td></tr>`;
     }).join('')}</tbody></table>`;
 }
 
@@ -56,19 +59,19 @@ function renderAnimaisTab() {
       <td>${escapeHTML(a.name)}</td><td>${escapeHTML(ANIMAL_STATUS[a.status] || a.status)}</td>
       <td>${a.verified ? svgIcon('check', 'icon-sm') + ' Sim' : 'Não'}</td><td>${a.featured ? svgIcon('star', 'icon-sm') + ' Sim' : 'Não'}</td>
       <td><a class="btn btn-outline btn-sm" href="animal.html?id=${Number(a.id)}">Abrir</a>
-      <button class="btn btn-outline btn-sm" onclick="toggleVerified(${Number(a.id)})">${a.verified ? 'Remover verificação' : 'Verificar perfil'}</button>
-      <button class="btn btn-outline btn-sm" onclick="toggleFeatured(${Number(a.id)})">${a.featured ? 'Remover destaque' : 'Destacar'}</button></td>
+      <button class="btn btn-outline btn-sm" data-action="toggleVerified" data-arg-0="${Number(a.id)}">${a.verified ? 'Remover verificação' : 'Verificar perfil'}</button>
+      <button class="btn btn-outline btn-sm" data-action="toggleFeatured" data-arg-0="${Number(a.id)}">${a.featured ? 'Remover destaque' : 'Destacar'}</button></td>
     </tr>`).join('') || '<tr><td colspan="5">Nenhum animal cadastrado.</td></tr>'}</tbody></table>`;
 }
 
 function renderUsuariosTab() {
   const users = Store.getUsers();
-  document.getElementById('tab-content').innerHTML = `<table>
-    <thead><tr><th>Nome</th><th>E-mail</th><th>Perfil</th><th>Cidade</th><th></th></tr></thead>
+  document.getElementById('tab-content').innerHTML = `<div class="auth-notice" style="margin-bottom:16px">Contas comuns são liberadas imediatamente. Cadastros de ONG precisam ser aprovados aqui antes do primeiro acesso.</div><div class="table-wrap"><table>
+    <thead><tr><th>Nome</th><th>E-mail</th><th>Tipo</th><th>Situação</th><th>Cidade</th><th>Ações</th></tr></thead>
     <tbody>${users.map(u => `<tr>
-      <td>${escapeHTML(u.name)}</td><td>${escapeHTML(u.email || '-')}</td><td>${escapeHTML(u.role)}</td><td>${escapeHTML(u.city || '-')}</td>
-      <td>${u.role !== 'admin' && !u.protected ? `<button class="btn btn-danger btn-sm" onclick="removeUser(${Number(u.id)})">Remover</button>` : (u.protected ? '<span class="muted">Dados de demonstração</span>' : '')}</td>
-    </tr>`).join('')}</tbody></table>`;
+      <td>${escapeHTML(u.name)}</td><td>${escapeHTML(u.email || '-')}</td><td>${escapeHTML({usuario:'Usuário',ong:'ONG / protetor',admin:'Administrador'}[u.accountType] || u.role)}</td><td>${u.accountType === 'ong' ? `<span class="status-pill status-${u.approvalStatus === 'aprovado' ? 'aprovada' : u.approvalStatus === 'reprovado' ? 'reprovada' : 'pendente'}">${escapeHTML({aprovado:'Aprovada',reprovado:'Reprovada',pendente:'Pendente'}[u.approvalStatus] || u.approvalStatus)}</span>` : 'Ativa'}</td><td>${escapeHTML(u.city || '-')}</td>
+      <td><div class="request-actions" style="justify-content:flex-start">${u.accountType === 'ong' && u.approvalStatus !== 'aprovado' ? `<button class="btn btn-primary btn-compact" data-action="approveOrganization" data-arg-0="${Number(u.id)}">Aprovar ONG</button>` : ''}${u.accountType === 'ong' && u.approvalStatus !== 'reprovado' ? `<button class="btn btn-danger-soft btn-compact" data-action="rejectOrganization" data-arg-0="${Number(u.id)}">Reprovar</button>` : ''}${u.role !== 'admin' && !u.protected ? `<button class="btn btn-danger-soft btn-compact" data-action="removeUser" data-arg-0="${Number(u.id)}">Remover</button>` : (u.protected ? '<span class="muted">Dados de demonstração</span>' : '')}</div></td>
+    </tr>`).join('')}</tbody></table></div>`;
 }
 
 function renderDenunciasTab() {
@@ -81,7 +84,7 @@ function renderDenunciasTab() {
       <td>${escapeHTML(REPORT_CATEGORY_LABEL[r.category] || (r.target_type === 'outro' ? 'Contato' : 'Outro'))}</td>
       <td style="max-width:320px;white-space:pre-wrap;">${escapeHTML(r.reason)}</td><td>${r.status === 'aberta' ? 'Aberta' : 'Resolvida'}</td>
       <td>${new Date(r.createdAt).toLocaleDateString('pt-BR')}</td>
-      <td>${r.status === 'aberta' ? `<button class="btn btn-primary btn-sm" onclick="handleResolveReport(${Number(r.id)})">Marcar como resolvida</button>` : ''}</td>
+      <td>${r.status === 'aberta' ? `<button class="btn btn-primary btn-sm" data-action="handleResolveReport" data-arg-0="${Number(r.id)}">Marcar como resolvida</button>` : ''}</td>
     </tr>`).join('')}</tbody></table>`;
 }
 
@@ -101,13 +104,14 @@ function renderApoioTab() {
     <form class="card admin-inline-form" id="support-admin-form">
       <h2>Cadastrar ponto verificado</h2><div id="support-admin-alert"></div>
       <div class="form-field"><label for="sp-name">Nome</label><input id="sp-name" required maxlength="160"></div>
-      <div class="form-row"><div class="form-field"><label for="sp-category">Categoria</label><select id="sp-category" required><option value="ong">ONG ou protetor</option><option value="veterinario">Veterinário</option><option value="castracao">Castração</option><option value="lar_temporario">Lar temporário</option><option value="transporte">Transporte solidário</option><option value="doacao">Doações</option></select></div><div class="form-field"><label for="sp-contact">Contato</label><input id="sp-contact" maxlength="120"></div></div>
+      <div class="form-row"><div class="form-field"><label for="sp-category">Categoria</label><select id="sp-category" required><option value="ong">ONG ou protetor</option><option value="veterinario">Hospital ou atendimento veterinário</option><option value="zoonoses">Vigilância de zoonoses</option><option value="castracao">Castração</option><option value="lar_temporario">Lar temporário</option><option value="transporte">Transporte solidário</option><option value="doacao">Doações</option></select></div><div class="form-field"><label for="sp-contact">Contato</label><input id="sp-contact" maxlength="160"></div></div>
       <div class="form-row"><div class="form-field"><label for="sp-city">Cidade</label><input id="sp-city" required maxlength="120"></div><div class="form-field"><label for="sp-state">Estado</label><input id="sp-state" required maxlength="40" value="RN"></div></div>
       <div class="form-field"><label for="sp-address">Endereço</label><input id="sp-address" maxlength="300"></div>
       <div class="form-field"><label for="sp-services">Serviços oferecidos</label><textarea id="sp-services" rows="3" maxlength="1000"></textarea></div>
+      <div class="form-field"><label for="sp-source-url">Fonte oficial (link https://)</label><input id="sp-source-url" type="url" maxlength="1000" placeholder="https://..."></div>
       <button class="btn btn-primary" type="submit">Publicar na rede</button>
     </form>
-    <div><h2>Pontos publicados</h2>${points.length ? points.map(p => `<div class="card admin-support-row"><div><b>${escapeHTML(p.name)}</b><small>${escapeHTML(p.city)}/${escapeHTML(p.state)} · ${escapeHTML(p.category)}</small></div><button class="btn btn-danger btn-sm" onclick="removeSupportPoint(${Number(p.id)})">Remover</button></div>`).join('') : '<p>Nenhum ponto cadastrado. Não publique dados sem antes conferi-los.</p>'}</div>
+    <div><h2>Pontos publicados</h2>${points.length ? points.map(p => `<div class="card admin-support-row"><div><b>${escapeHTML(p.name)}</b><small>${escapeHTML(p.city)}/${escapeHTML(p.state)} · ${escapeHTML(p.category)}</small></div><button class="btn btn-danger btn-sm" data-action="removeSupportPoint" data-arg-0="${Number(p.id)}">Remover</button></div>`).join('') : '<p>Nenhum ponto cadastrado. Não publique dados sem antes conferi-los.</p>'}</div>
   </div>`;
   document.getElementById('support-admin-form')?.addEventListener('submit', submitSupportPoint);
 }
@@ -115,7 +119,7 @@ function renderApoioTab() {
 function submitSupportPoint(event) {
   event.preventDefault();
   try {
-    Store.createSupportPoint({ name: document.getElementById('sp-name').value, category: document.getElementById('sp-category').value, contact: document.getElementById('sp-contact').value, city: document.getElementById('sp-city').value, state: document.getElementById('sp-state').value, address: document.getElementById('sp-address').value, services: document.getElementById('sp-services').value });
+    Store.createSupportPoint({ name: document.getElementById('sp-name').value, category: document.getElementById('sp-category').value, contact: document.getElementById('sp-contact').value, city: document.getElementById('sp-city').value, state: document.getElementById('sp-state').value, address: document.getElementById('sp-address').value, services: document.getElementById('sp-services').value, sourceUrl: document.getElementById('sp-source-url').value });
     renderApoioTab();
   } catch (err) { document.getElementById('support-admin-alert').innerHTML = `<div class="alert alert-error">${escapeHTML(err.message)}</div>`; }
 }
@@ -150,6 +154,15 @@ function handleResolveReport(id) {
 function removeUser(id) {
   if (!confirm('Remover este usuário?')) return;
   adminAction(() => Store.deleteUser(id), () => { renderStats(); renderUsuariosTab(); });
+}
+function approveOrganization(id) {
+  if (!confirm('Aprovar esta ONG e liberar o acesso para publicar animais?')) return;
+  adminAction(() => Store.approveUser(id), () => { renderStats(); renderUsuariosTab(); showToast('ONG aprovada.'); });
+}
+function rejectOrganization(id) {
+  const reason = prompt('Motivo da reprovação (opcional):') || '';
+  if (!confirm('Confirmar a reprovação deste cadastro de ONG?')) return;
+  adminAction(() => Store.rejectUser(id, reason), () => { renderStats(); renderUsuariosTab(); showToast('Cadastro de ONG reprovado.'); });
 }
 
 const TABS = {

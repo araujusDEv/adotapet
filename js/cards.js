@@ -1,5 +1,5 @@
 function favoriteButtonHTML(animalId, isFavorite) {
-  return `<button type="button" class="fav-btn ${isFavorite ? 'is-favorite' : ''}" onclick="handleToggleFavorite(${Number(animalId)})" aria-label="${isFavorite ? 'Remover dos favoritos' : 'Favoritar'}" aria-pressed="${Boolean(isFavorite)}">${svgIcon('heart')}</button>`;
+  return `<button type="button" class="fav-btn ${isFavorite ? 'is-favorite' : ''}" data-action="handleToggleFavorite" data-arg-0="${Number(animalId)}" aria-label="${isFavorite ? 'Remover dos favoritos' : 'Favoritar'}" aria-pressed="${Boolean(isFavorite)}">${svgIcon('heart')}</button>`;
 }
 
 function animalCardHTML(animal, isFavorite) {

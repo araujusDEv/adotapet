@@ -15,16 +15,20 @@ const ANIMAL_STATUS = {
 };
 
 const REQUEST_STATUS = {
-  pendente: 'Em análise',
-  aceita: 'Aceita',
-  recusada: 'Recusada',
-  cancelada: 'Cancelada — animal já adotado'
+  pendente: 'Pendente',
+  em_analise: 'Em análise',
+  aprovada: 'Aprovada',
+  reprovada: 'Reprovada',
+  cancelada: 'Cancelada',
+  concluida: 'Adoção concluída'
 };
 
-const REQUEST_STAGES = ['enviado', 'em_analise', 'entrevista', 'concluida'];
+const REQUEST_STAGES = ['enviada', 'em_analise', 'aprovada', 'entrevista', 'concluida'];
 const REQUEST_STAGE_LABEL = {
+  enviada: 'Interesse enviado',
   enviado: 'Interesse enviado',
   em_analise: 'Em análise',
+  aprovada: 'Solicitação aprovada',
   entrevista: 'Entrevista / contato',
   concluida: 'Adoção concluída'
 };
@@ -82,9 +86,35 @@ function apiRequest(method, url, body, options = {}) {
   throw err;
 }
 
+async function apiRequestAsync(method, url, body, options = {}) {
+  if (window.location.protocol === 'file:') throw new Error('Execute o servidor e acesse o endereço local informado no terminal.');
+  let response;
+  try {
+    response = await fetch(url, {
+      method,
+      headers: { Accept: 'application/json', ...(body === undefined ? {} : { 'Content-Type': 'application/json' }) },
+      body: body === undefined ? undefined : JSON.stringify(body),
+      credentials: 'same-origin'
+    });
+  } catch {
+    throw new Error('Não foi possível conectar ao servidor do AdotaPet.');
+  }
+  let payload = null;
+  try { payload = await response.json(); } catch { payload = null; }
+  if (response.ok) return payload;
+  if (options.allow401 && response.status === 401) return null;
+  const err = new Error(payload?.error || `Erro ${response.status} ao acessar o servidor.`);
+  err.status = response.status;
+  throw err;
+}
+
 const Store = {
+  getAnimalOwnerName(id) { return apiRequest('GET', `/api/animals/${Number(id)}/public-name`); },
   getUsers() { return apiRequest('GET', '/api/users') || []; },
   deleteUser(id) { return apiRequest('DELETE', `/api/users/${Number(id)}`); },
+  approveUser(id) { return apiRequest('POST', `/api/users/${Number(id)}/approve`, {}); },
+  rejectUser(id, reason = '') { return apiRequest('POST', `/api/users/${Number(id)}/reject`, { reason }); },
+  updateMyProfile(changes) { return apiRequest('PATCH', '/api/users/me', changes || {}); },
 
   getAnimals() { return apiRequest('GET', '/api/animals') || []; },
   getAnimal(id) { return this.getAnimals().find(a => a.id === Number(id)) || null; },
@@ -103,8 +133,12 @@ const Store = {
   getRequests() { return apiRequest('GET', '/api/requests') || []; },
   getPublicStories() { return apiRequest('GET', '/api/stories') || []; },
   createRequest(reqData) { return apiRequest('POST', '/api/requests', reqData); },
-  acceptRequest(id) { return apiRequest('POST', `/api/requests/${Number(id)}/accept`, {}); },
-  rejectRequest(id) { return apiRequest('POST', `/api/requests/${Number(id)}/reject`, {}); },
+  analyzeRequest(id) { return apiRequest('POST', `/api/requests/${Number(id)}/analyze`, {}); },
+  approveRequest(id) { return apiRequest('POST', `/api/requests/${Number(id)}/approve`, {}); },
+  acceptRequest(id) { return this.approveRequest(id); },
+  rejectRequest(id, reason = '') { return apiRequest('POST', `/api/requests/${Number(id)}/reject`, { reason }); },
+  completeRequest(id) { return apiRequest('POST', `/api/requests/${Number(id)}/complete`, {}); },
+  cancelRequest(id, reason = '') { return apiRequest('POST', `/api/requests/${Number(id)}/cancel`, { reason }); },
   advanceRequestStage(id, stage) {
     if (stage !== 'entrevista') throw new Error('Etapa inválida.');
     return apiRequest('POST', `/api/requests/${Number(id)}/interview`, {});
@@ -143,6 +177,9 @@ const Store = {
   acknowledgeContract(requestId) { return apiRequest('POST', `/api/contracts/${Number(requestId)}/acknowledge`, {}); },
   getFollowups() { return apiRequest('GET', '/api/followups') || []; },
   createFollowup(data) { return apiRequest('POST', '/api/followups', data); },
+  getCampaigns() { return apiRequestAsync('GET', '/api/campaigns'); },
+  createCampaign(data) { return apiRequestAsync('POST', '/api/campaigns', data); },
+  updateCampaign(id, data) { return apiRequestAsync('PATCH', '/api/campaigns/' + Number(id), data); },
   getSupportPoints() { return apiRequest('GET', '/api/support-points') || []; },
   createSupportPoint(data) { return apiRequest('POST', '/api/support-points', data); },
   deleteSupportPoint(id) { return apiRequest('DELETE', `/api/support-points/${Number(id)}`); }
@@ -208,3 +245,45 @@ function computeCompatibility(profile, animal) {
 
 // Mantido por compatibilidade com as páginas antigas. O seed agora é feito pelo servidor.
 function seedDatabase() {}
+
+// Delegated handlers also support buttons rendered dynamically, without inline scripts.
+const clickActions = {
+  'handleToggleFavorite': (...args) => handleToggleFavorite(...args),
+  'approveAnimal': (...args) => approveAnimal(...args),
+  'rejectAnimal': (...args) => rejectAnimal(...args),
+  'toggleVerified': (...args) => toggleVerified(...args),
+  'toggleFeatured': (...args) => toggleFeatured(...args),
+  'approveOrganization': (...args) => approveOrganization(...args),
+  'rejectOrganization': (...args) => rejectOrganization(...args),
+  'removeUser': (...args) => removeUser(...args),
+  'handleResolveReport': (...args) => handleResolveReport(...args),
+  'removeSupportPoint': (...args) => removeSupportPoint(...args),
+  'setActivePhoto': (...args) => setActivePhoto(...args),
+  'shareMissing': (...args) => shareMissing(...args),
+  'editStory': (...args) => editStory(...args),
+  'showStoryForm': (...args) => showStoryForm(...args),
+  'showFollowupForm': (...args) => showFollowupForm(...args),
+  'cancelMyRequest': (...args) => cancelMyRequest(...args),
+  'submitFollowup': (...args) => submitFollowup(...args),
+  'submitStory': (...args) => submitStory(...args),
+  'removeAnimal': (...args) => removeAnimal(...args),
+  'openProfile': (...args) => openProfile(...args),
+  'analyzeRequest': (...args) => analyzeRequest(...args),
+  'approveRequest': (...args) => approveRequest(...args),
+  'openReject': (...args) => openReject(...args),
+  'markInterview': (...args) => markInterview(...args),
+  'completeRequest': (...args) => completeRequest(...args),
+  'print': () => window.print(),
+  'close-profile-dialog': () => document.getElementById('profile-dialog').close()
+};
+document.addEventListener('click', event => {
+  const target = event.target.closest('[data-action]');
+  if (!target || !Object.prototype.hasOwnProperty.call(clickActions, target.dataset.action)) return;
+  const args = [];
+  for (let i = 0; target.hasAttribute('data-arg-' + i); i++) {
+    const value = Number(target.getAttribute('data-arg-' + i));
+    if (!Number.isFinite(value)) return;
+    args.push(value);
+  }
+  clickActions[target.dataset.action](...args);
+});

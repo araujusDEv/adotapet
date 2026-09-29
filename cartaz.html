@@ -8,7 +8,7 @@
 <link rel="stylesheet" href="css/style.css?v=20260830-visual1">
 <link rel="stylesheet" href="css/visual.css?v=20260830-visual1">
 <link rel="stylesheet" href="css/portal.css?v=20260909-accountflow1">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="js/vendor/qrcode.min.js"></script>
 </head>
 <body>
   <a href="#main" class="skip-link">Pular para o conteúdo</a>
@@ -35,7 +35,7 @@
     <span class="eyebrow">Cartaz para divulgação</span>
     <div>
       <button class="btn btn-outline btn-sm" id="btn-share">Compartilhar</button>
-      <button class="btn btn-primary btn-sm" onclick="window.print()">Imprimir cartaz</button>
+      <button class="btn btn-primary btn-sm" data-action="print">Imprimir cartaz</button>
     </div>
   </div>
   <div id="poster-container"></div>

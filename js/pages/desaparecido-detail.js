@@ -57,7 +57,7 @@ function renderMissingDetail() {
         </div>
         ${animal.features ? `<p><b>Características:</b> ${escapeHTML(animal.features)}</p>` : ''}
         ${animal.reward ? `<p><b>Recompensa oferecida:</b> ${escapeHTML(animal.reward)}</p>` : ''}
-        <div style="display:flex;gap:12px;margin:16px 0;"><button class="btn btn-outline" onclick="shareMissing()">Compartilhar</button></div>
+        <div style="display:flex;gap:12px;margin:16px 0;"><button class="btn btn-outline" data-action="shareMissing">Compartilhar</button></div>
         ${ownerTools}
         <div id="sighting-area">
           ${animal.found ? '<div class="alert alert-success">Como o animal foi encontrado, novos avistamentos estão desativados.</div>' : `

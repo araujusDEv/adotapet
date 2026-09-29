@@ -13,16 +13,20 @@ const Auth = {
     return this._currentUser;
   },
 
-  login(email, password) {
-    const result = apiRequest('POST', '/api/auth/login', { email, password });
+  async login(email, password, remember = false) {
+    const result = await apiRequestAsync('POST', '/api/auth/login', { email, password, remember });
     this._currentUser = result.user;
     return result.user;
   },
 
-  register({ name, email, password, role, city, state, phone }) {
-    const result = apiRequest('POST', '/api/auth/register', { name, email, password, role, city, state, phone });
-    this._currentUser = result.user;
-    return result.user;
+  async register({ name, email, password, passwordConfirmation, accountType, city, state, phone, termsAccepted, remember }) {
+    const result = await apiRequestAsync('POST', '/api/auth/register', { name, email, password, passwordConfirmation, accountType, city, state, phone, termsAccepted, remember });
+    this._currentUser = result.pendingApproval ? null : result.user;
+    return result;
+  },
+
+  forgotPassword(email) {
+    return apiRequestAsync('POST', '/api/auth/forgot-password', { email });
   },
 
   logout() {

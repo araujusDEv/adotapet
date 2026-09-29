@@ -1,200 +1,50 @@
 let currentUser = null;
+const donorTabs = ['animais','solicitacoes','desaparecidos','acompanhamentos'];
+function ownsAnimal(animal) { return currentUser.role === 'admin' || Number(animal?.ownerId) === currentUser.id; }
+function ownedAnimals() { return Store.getAnimals().filter(ownsAnimal); }
+function photoFor(animal) { return safeImageSrc(animal?.photos?.[0]) || 'img/brand-symbol.png'; }
+function statusPill(status) { return `<span class="status-pill status-${escapeAttr(status)}">${escapeHTML(REQUEST_STATUS[status] || status)}</span>`; }
 
 function renderAnimaisTab() {
-  const animals = Store.getAnimals().filter(a => Number(a.ownerId) === currentUser.id);
-  const content = document.getElementById('tab-content');
-  if (animals.length === 0) {
-    content.innerHTML = '<div class="empty-state"><h3>Você ainda não publicou animais</h3><a href="cadastrar-animal.html" class="btn btn-primary" style="margin-top:12px;">Cadastrar animal</a></div>';
-    return;
-  }
-  content.innerHTML = `
-    <table>
-      <thead><tr><th>Animal</th><th>Cidade</th><th>Visualizações</th><th>Status</th><th>Ações</th></tr></thead>
-      <tbody>${animals.map(a => `
-        <tr>
-          <td>${escapeHTML(a.name)}</td><td>${escapeHTML(a.city)}</td><td>${Number(a.views) || 0}</td><td>${escapeHTML(ANIMAL_STATUS[a.status] || a.status)}</td>
-          <td>
-            <a class="btn btn-outline btn-sm" href="animal.html?id=${Number(a.id)}">Abrir</a>
-            ${a.seed ? '<span class="tag">Demonstração</span>' : `<button class="btn btn-danger btn-sm" onclick="removeAnimal(${Number(a.id)})">Excluir</button>`}
-          </td>
-        </tr>`).join('')}</tbody>
-    </table>`;
+  const animals = ownedAnimals(); const content = document.getElementById('tab-content');
+  if (!animals.length) { content.innerHTML = '<div class="empty-state"><h3>Você ainda não publicou animais</h3><p>Cadastre um animal para que ele passe pela análise e apareça na busca pública.</p><a href="cadastrar-animal.html" class="btn btn-primary" style="margin-top:12px">Publicar animal</a></div>'; return; }
+  content.innerHTML = `<div class="panel-toolbar"><p><b>${animals.length}</b> ${animals.length === 1 ? 'animal publicado' : 'animais publicados'}</p><a class="btn btn-primary" href="cadastrar-animal.html">${svgIcon('plus')}Publicar animal</a></div><div class="table-wrap"><table><thead><tr><th>Animal</th><th>Local</th><th>Visualizações</th><th>Status</th><th>Ações</th></tr></thead><tbody>${animals.map(animal => `<tr><td><span style="display:flex;align-items:center;gap:10px"><img src="${escapeAttr(photoFor(animal))}" alt="" style="width:48px;height:48px;border-radius:10px;object-fit:cover"><b>${escapeHTML(animal.name)}</b></span></td><td>${escapeHTML(animal.city)}/${escapeHTML(animal.state)}</td><td>${Number(animal.views)||0}</td><td>${escapeHTML(ANIMAL_STATUS[animal.status]||animal.status)}</td><td><div class="request-actions" style="justify-content:flex-start"><a class="btn btn-outline btn-compact" href="animal.html?id=${Number(animal.id)}">Abrir</a><a class="btn btn-outline btn-compact" href="cadastrar-animal.html?id=${Number(animal.id)}">Editar</a>${animal.seed ? '<span class="tag">Demonstração</span>' : `<button class="btn btn-danger-soft btn-compact" data-action="removeAnimal" data-arg-0="${Number(animal.id)}">Excluir</button>`}</div></td></tr>`).join('')}</tbody></table></div>`;
 }
-
-function requestAnswer(value, labels = {}) {
-  const normalized = String(value ?? '').trim();
-  if (!normalized) return 'Não informado';
-  return labels[normalized] || normalized;
+function answer(value, labels = {}) { const normalized = String(value ?? '').trim(); if (!normalized) return 'Não informado'; return labels[normalized] || normalized; }
+function yesNo(value) { if (value === true || value === 'sim') return 'Sim'; if (value === false || value === 'nao') return 'Não'; return 'Não informado'; }
+function profileItems(request) {
+  const q=request.questionnaire||{}; const user=request.requester||{};
+  const items=[['Nome',request.full_name||user.name],['E-mail',user.email],['Telefone',user.phone],['Cidade',request.city||user.city],['Idade',request.age],['Moradia',answer(request.housing,{casa:'Casa',apartamento:'Apartamento',sitio:'Sítio / chácara'})],['Possui quintal',yesNo(request.has_yard)],['Possui outros animais',yesNo(request.has_pets)],['Experiência com animais',yesNo(request.experience)],['Todos concordam',yesNo(q.household_agrees)],['Condições financeiras',yesNo(q.financial_conditions)],['Cuidados veterinários',yesNo(q.vet_commitment)],['Tempo sozinho',answer(q.alone_time,{menos_2h:'Menos de 2 horas','2_4h':'2 a 4 horas','4_8h':'4 a 8 horas',mais_8h:'Mais de 8 horas'})]];
+  return items.map(([label,value])=>`<div class="profile-data"><small>${escapeHTML(label)}</small><b>${escapeHTML(answer(value))}</b></div>`).join('')+`<div class="request-questionnaire-text"><span>Motivo da adoção</span><p>${escapeHTML(answer(request.reason))}</p></div><div class="request-questionnaire-text"><span>Plano de adaptação</span><p>${escapeHTML(answer(q.adaptation_plan))}</p></div>`;
 }
-
-function yesNoAnswer(value) {
-  if (value === true || value === 'sim') return 'Sim';
-  if (value === false || value === 'nao') return 'Não';
-  return 'Não informado';
+function actionButtons(request) {
+  const id=Number(request.id); const view=`<button class="btn btn-outline btn-compact" data-action="openProfile" data-arg-0="${id}">Ver perfil</button>`;
+  if(request.status==='pendente') return `${view}<button class="btn btn-outline btn-compact" data-action="analyzeRequest" data-arg-0="${id}">Iniciar análise</button><button class="btn btn-primary btn-compact" data-action="approveRequest" data-arg-0="${id}">Aprovar</button><button class="btn btn-danger-soft btn-compact" data-action="openReject" data-arg-0="${id}">Reprovar</button>`;
+  if(request.status==='em_analise') return `${view}<button class="btn btn-primary btn-compact" data-action="approveRequest" data-arg-0="${id}">Aprovar</button><button class="btn btn-danger-soft btn-compact" data-action="openReject" data-arg-0="${id}">Reprovar</button>`;
+  if(request.status==='aprovada') return `${view}<button class="btn btn-outline btn-compact" data-action="markInterview" data-arg-0="${id}">Registrar entrevista</button><button class="btn btn-primary btn-compact" data-action="completeRequest" data-arg-0="${id}">Concluir adoção</button><button class="btn btn-danger-soft btn-compact" data-action="openReject" data-arg-0="${id}">Reprovar</button>`;
+  if(request.status==='concluida') return `${view}<a class="btn btn-outline btn-compact" href="contrato.html?request=${id}">Ver termo</a>`;
+  return view;
 }
-
-function requestQuestionnaireHTML(request) {
-  const questionnaire = request.questionnaire || {};
-  const housingLabels = { casa: 'Casa', apartamento: 'Apartamento', sitio: 'Sítio / chácara' };
-  const aloneTimeLabels = {
-    menos_2h: 'Menos de 2 horas',
-    '2_4h': '2 a 4 horas',
-    '4_8h': '4 a 8 horas',
-    mais_8h: 'Mais de 8 horas'
-  };
-  const answer = (label, value) => `
-    <div class="request-questionnaire-item">
-      <span>${escapeHTML(label)}</span>
-      <b>${escapeHTML(value)}</b>
-    </div>`;
-
-  return `
-    <div class="request-questionnaire-grid">
-      ${answer('Idade', requestAnswer(request.age))}
-      ${answer('Cidade', requestAnswer(request.city))}
-      ${answer('Tipo de moradia', requestAnswer(request.housing, housingLabels))}
-      ${answer('Possui quintal', yesNoAnswer(request.has_yard))}
-      ${answer('Possui outros animais', yesNoAnswer(request.has_pets))}
-      ${answer('Experiência com animais', yesNoAnswer(request.experience))}
-      ${answer('Todos da residência concordam', yesNoAnswer(questionnaire.household_agrees))}
-      ${answer('Possui condições financeiras', yesNoAnswer(questionnaire.financial_conditions))}
-      ${answer('Tempo que ficará sozinho', requestAnswer(questionnaire.alone_time, aloneTimeLabels))}
-      ${answer('Já teve animais anteriormente', yesNoAnswer(questionnaire.had_pets_before))}
-      ${answer('Compromisso com cuidados veterinários', yesNoAnswer(questionnaire.vet_commitment))}
-      ${answer('Compromisso com adoção responsável', yesNoAnswer(request.responsibility_confirmed))}
-    </div>
-    <div class="request-questionnaire-text">
-      <span>Motivo da adoção</span>
-      <p>${escapeHTML(requestAnswer(request.reason))}</p>
-    </div>
-    <div class="request-questionnaire-text">
-      <span>Plano em caso de dificuldade de adaptação</span>
-      <p>${escapeHTML(requestAnswer(questionnaire.adaptation_plan))}</p>
-    </div>`;
+function managedRequests() {
+  const animalIds=new Set(ownedAnimals().map(a=>a.id)); return Store.getRequests().filter(request=>animalIds.has(request.animalId)).sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));
 }
-
 function renderSolicitacoesTab() {
-  const requests = Store.getRequests().filter(r => {
-    const animal = Store.getAnimal(r.animalId);
-    return animal && Number(animal.ownerId) === currentUser.id;
-  }).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-  const content = document.getElementById('tab-content');
-  if (!requests.length) {
-    content.innerHTML = '<div class="empty-state"><h3>Nenhuma solicitação recebida ainda.</h3><p>Quando alguém demonstrar interesse em um animal, a solicitação aparecerá aqui.</p></div>';
-    return;
-  }
-
-  content.innerHTML = `<div class="request-review-list">${requests.map(request => {
-    const animal = Store.getAnimal(request.animalId);
-    const requestId = Number(request.id);
-    const requestDate = request.createdAt ? new Date(request.createdAt).toLocaleDateString('pt-BR') : 'Não informada';
-    let actions = '';
-
-    if (request.status === 'pendente' && request.stage === 'em_analise') {
-      actions = `
-        <button class="btn btn-primary btn-sm" onclick="markInterview(${requestId})">Marcar entrevista</button>
-        <button class="btn btn-outline btn-sm" onclick="respondRequest(${requestId}, 'recusada')">Recusar solicitação</button>`;
-    } else if (request.status === 'pendente' && request.stage === 'entrevista') {
-      actions = `
-        <button class="btn btn-primary btn-sm" onclick="respondRequest(${requestId}, 'aceita')">Aprovar adoção</button>
-        <button class="btn btn-outline btn-sm" onclick="respondRequest(${requestId}, 'recusada')">Recusar solicitação</button>`;
-    } else if (request.status === 'aceita') {
-      actions = `<a class="btn btn-outline btn-sm" href="contrato.html?request=${requestId}">Ver termo</a>`;
-    }
-
-    return `
-      <article class="card request-review-card">
-        <div class="request-review-summary">
-          <div><span>Animal</span><b>${escapeHTML(animal ? animal.name : 'Não encontrado')}</b></div>
-          <div><span>Interessado</span><b>${escapeHTML(request.full_name || 'Não informado')}</b></div>
-          <div><span>Solicitação</span><b>${escapeHTML(requestDate)}</b></div>
-          <div><span>Status</span><b>${escapeHTML(REQUEST_STATUS[request.status] || request.status)}</b></div>
-          <div><span>Etapa</span><b>${escapeHTML(REQUEST_STAGE_LABEL[request.stage] || request.stage || 'Não informada')}</b></div>
-        </div>
-        <details class="request-questionnaire">
-          <summary>Ver questionário respondido</summary>
-          <div class="request-questionnaire-content">
-            <h3>Respostas do interessado</h3>
-            ${requestQuestionnaireHTML(request)}
-          </div>
-        </details>
-        ${actions ? `<div class="request-actions">${actions}</div>` : ''}
-      </article>`;
-  }).join('')}</div>`;
+  const requests=managedRequests(); const content=document.getElementById('tab-content');
+  if(!requests.length){content.innerHTML='<div class="empty-state"><h3>Nenhum interessado ainda</h3><p>Quando alguém enviar o formulário para um animal seu, a análise aparecerá aqui.</p></div>';return;}
+  content.innerHTML=`<div class="panel-toolbar"><p>Analise o perfil e o formulário antes de tomar uma decisão.</p><label class="form-field" style="margin:0;min-width:190px"><span class="sr-only">Filtrar por status</span><select id="request-filter"><option value="">Todos os status</option>${Object.entries(REQUEST_STATUS).map(([value,label])=>`<option value="${value}">${escapeHTML(label)}</option>`).join('')}</select></label></div><div class="request-list" id="request-list">${requests.map(requestCard).join('')}</div>`;
+  document.getElementById('request-filter').addEventListener('change',event=>{document.querySelectorAll('.request-review-card').forEach(card=>card.hidden=Boolean(event.target.value&&card.dataset.status!==event.target.value));});
 }
-
-function renderAcompanhamentosTab() {
-  const requests = Store.getRequests().filter(r => r.status === 'aceita');
-  const followups = Store.getFollowups().sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-  const ownedAnimalIds = new Set(Store.getAnimals().filter(a => Number(a.ownerId) === currentUser.id).map(a => a.id));
-  const visible = followups.filter(f => ownedAnimalIds.has(f.animalId));
-  const content = document.getElementById('tab-content');
-  content.innerHTML = visible.length ? visible.map(f => {
-    const animal = Store.getAnimal(f.animalId); const request = requests.find(r => r.id === f.requestId);
-    const photo = safeImageSrc(f.photo);
-    const adaptation = { otima:'Ótima', boa:'Boa, em adaptação', dificil:'Difícil' }[f.adaptation] || f.adaptation;
-    return `<article class="card followup-report"><div>${photo ? `<img src="${escapeAttr(photo)}" alt="Atualização de ${escapeAttr(animal?.name || 'animal')}">` : ''}</div><div>
-      <span class="tag">${Number(f.day)} dias</span><h3>${escapeHTML(animal?.name || 'Animal')}</h3>
-      <p><b>Adotante:</b> ${escapeHTML(request?.full_name || '-')} · <b>Adaptação:</b> ${escapeHTML(adaptation)}</p>
-      ${f.health ? `<p><b>Saúde:</b> ${escapeHTML(f.health)}</p>` : ''}${f.behavior ? `<p><b>Comportamento:</b> ${escapeHTML(f.behavior)}</p>` : ''}
-      ${f.needsHelp ? '<div class="alert alert-error">A família informou que precisa de orientação ou apoio.</div>' : '<div class="alert alert-success">A família não solicitou ajuda neste acompanhamento.</div>'}
-    </div></article>`;
-  }).join('') : '<div class="empty-state"><h3>Nenhum acompanhamento recebido</h3><p>As famílias poderão enviar atualizações após 7, 30 e 90 dias da adoção.</p></div>';
-}
-
-function renderDesaparecidosTab() {
-  const records = Store.getMissing().filter(m => Number(m.ownerId) === currentUser.id);
-  let sightings = [];
-  try { sightings = Store.getSightings(); } catch { }
-  const content = document.getElementById('tab-content');
-  content.innerHTML = records.length ? `
-    <table>
-      <thead><tr><th>Animal</th><th>Cidade</th><th>Status</th><th>Avistamentos</th><th>Ações</th></tr></thead>
-      <tbody>${records.map(m => {
-        const count = sightings.filter(s => s.missingAnimalId === m.id).length;
-        return `<tr>
-          <td>${escapeHTML(m.name || 'Sem nome')}</td><td>${escapeHTML(m.city)}/${escapeHTML(m.state)}</td>
-          <td>${m.found ? 'Encontrado' : 'Desaparecido'}</td><td>${count}</td>
-          <td><a href="desaparecido.html?id=${Number(m.id)}" class="btn btn-outline btn-sm">Ver registro</a></td>
-        </tr>`;
-      }).join('')}</tbody>
-    </table>` : '<div class="empty-state"><h3>Nenhum animal desaparecido cadastrado por você.</h3><a href="cadastrar-desaparecido.html" class="btn btn-primary" style="margin-top:12px;">Cadastrar desaparecido</a></div>';
-}
-
-function markInterview(id) {
-  try { Store.advanceRequestStage(id, 'entrevista'); renderSolicitacoesTab(); }
-  catch (err) { showToast(err.message); }
-}
-
-function removeAnimal(id) {
-  if (!confirm('Excluir este anúncio?')) return;
-  try { Store.deleteAnimal(id); renderAnimaisTab(); }
-  catch (err) { showToast(err.message); }
-}
-
-function respondRequest(id, status) {
-  const message = status === 'aceita'
-    ? 'Confirma a aprovação desta adoção? As outras solicitações para o animal serão encerradas.'
-    : 'Confirma que deseja recusar esta solicitação?';
-  if (!confirm(message)) return;
-  try {
-    if (status === 'aceita') Store.acceptRequest(id);
-    else Store.rejectRequest(id);
-    renderSolicitacoesTab();
-  } catch (err) { showToast(err.message); }
-}
-
-function activateDonorTab(tabId, renderer) {
-  ['tab-animais', 'tab-solicitacoes', 'tab-desaparecidos', 'tab-acompanhamentos'].forEach(id => document.getElementById(id)?.classList.toggle('active', id === tabId));
-  renderer();
-}
-
-document.addEventListener('DOMContentLoaded', () => {
-  currentUser = Auth.requireAuth(['doador', 'admin']);
-  if (!currentUser) return;
-  document.getElementById('tab-animais')?.addEventListener('click', () => activateDonorTab('tab-animais', renderAnimaisTab));
-  document.getElementById('tab-solicitacoes')?.addEventListener('click', () => activateDonorTab('tab-solicitacoes', renderSolicitacoesTab));
-  document.getElementById('tab-desaparecidos')?.addEventListener('click', () => activateDonorTab('tab-desaparecidos', renderDesaparecidosTab));
-  document.getElementById('tab-acompanhamentos')?.addEventListener('click', () => activateDonorTab('tab-acompanhamentos', renderAcompanhamentosTab));
-  renderAnimaisTab();
-});
+function requestCard(request){const animal=Store.getAnimal(request.animalId);const user=request.requester||{};return `<article class="request-review-card" data-status="${escapeAttr(request.status)}"><img class="request-animal-photo" src="${escapeAttr(photoFor(animal))}" alt="${escapeAttr(animal?.name||'Animal')}"><div><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><h3>${escapeHTML(animal?.name||'Animal não encontrado')} · ${escapeHTML(request.full_name||user.name||'Interessado')}</h3>${statusPill(request.status)}</div><div class="request-meta"><span>${escapeHTML(user.city||request.city||'Cidade não informada')}</span>${user.phone?`<span>${escapeHTML(user.phone)}</span>`:''}<span>Enviada em ${new Date(request.createdAt).toLocaleDateString('pt-BR')}</span></div><p class="request-message"><b>Por que deseja adotar:</b> ${escapeHTML(answer(request.reason))}</p>${request.rejectionReason?`<p class="request-message"><b>Motivo da reprovação:</b> ${escapeHTML(request.rejectionReason)}</p>`:''}</div><div class="request-actions">${actionButtons(request)}</div></article>`;}
+function refreshRequests(){renderSolicitacoesTab();showToast('Solicitação atualizada.');}
+function analyzeRequest(id){try{Store.analyzeRequest(id);refreshRequests();}catch(err){showToast(err.message)}}
+function approveRequest(id){if(!confirm('Aprovar esta solicitação para avançar aos próximos passos? O animal ainda não será marcado como adotado.'))return;try{Store.approveRequest(id);refreshRequests();}catch(err){showToast(err.message)}}
+function markInterview(id){if(!confirm('Confirmar que a entrevista ou o contato com o interessado foi realizado/agendado?'))return;try{Store.advanceRequestStage(id,'entrevista');refreshRequests();}catch(err){showToast(err.message)}}
+function completeRequest(id){if(!confirm('Confirmar que a adoção foi realmente concluída? O animal será marcado como adotado e o termo será gerado.'))return;try{Store.completeRequest(id);refreshRequests();}catch(err){showToast(err.message)}}
+function openProfile(id){const request=managedRequests().find(item=>item.id===Number(id));if(!request)return;document.getElementById('profile-dialog-title').textContent=`Perfil de ${request.full_name||request.requester?.name||'interessado'}`;document.getElementById('profile-dialog-body').innerHTML=`<div class="profile-data-grid">${profileItems(request)}</div>`;document.getElementById('profile-dialog').showModal();}
+function openReject(id){document.getElementById('reject-request-id').value=id;document.getElementById('reject-reason').value='';document.getElementById('reject-dialog').showModal();setTimeout(()=>document.getElementById('reject-reason').focus(),20);}
+function submitReject(){const id=Number(document.getElementById('reject-request-id').value);const reason=document.getElementById('reject-reason').value;try{Store.rejectRequest(id,reason);document.getElementById('reject-dialog').close();refreshRequests();}catch(err){showToast(err.message)}}
+function removeAnimal(id){if(!confirm('Excluir permanentemente este anúncio?'))return;try{Store.deleteAnimal(id);renderAnimaisTab();showToast('Anúncio excluído.')}catch(err){showToast(err.message)}}
+function renderAcompanhamentosTab(){const concluded=Store.getRequests().filter(r=>r.status==='concluida');const ids=new Set(ownedAnimals().map(a=>a.id));const visible=Store.getFollowups().filter(f=>ids.has(f.animalId)).sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));const content=document.getElementById('tab-content');content.innerHTML=visible.length?visible.map(f=>{const animal=Store.getAnimal(f.animalId),request=concluded.find(r=>r.id===f.requestId),photo=safeImageSrc(f.photo);return `<article class="card followup-report"><div>${photo?`<img src="${escapeAttr(photo)}" alt="Atualização de ${escapeAttr(animal?.name||'animal')}">`:''}</div><div><span class="tag">${Number(f.day)} dias</span><h3>${escapeHTML(animal?.name||'Animal')}</h3><p><b>Adotante:</b> ${escapeHTML(request?.full_name||'-')}</p>${f.health?`<p><b>Saúde:</b> ${escapeHTML(f.health)}</p>`:''}${f.behavior?`<p><b>Comportamento:</b> ${escapeHTML(f.behavior)}</p>`:''}${f.needsHelp?'<div class="alert alert-error">A família pediu orientação ou apoio.</div>':'<div class="alert alert-success">A família não solicitou apoio.</div>'}</div></article>`}).join(''):'<div class="empty-state"><h3>Nenhum acompanhamento recebido</h3><p>Atualizações podem ser enviadas após 7, 30 e 90 dias da conclusão.</p></div>';}
+function renderDesaparecidosTab(){const records=Store.getMissing().filter(m=>currentUser.role==='admin'||Number(m.ownerId)===currentUser.id);let sightings=[];try{sightings=Store.getSightings()}catch{};document.getElementById('tab-content').innerHTML=records.length?`<div class="table-wrap"><table><thead><tr><th>Animal</th><th>Cidade</th><th>Status</th><th>Avistamentos</th><th>Ações</th></tr></thead><tbody>${records.map(m=>`<tr><td>${escapeHTML(m.name||'Sem nome')}</td><td>${escapeHTML(m.city)}/${escapeHTML(m.state)}</td><td>${m.found?'Encontrado':'Desaparecido'}</td><td>${sightings.filter(s=>s.missingAnimalId===m.id).length}</td><td><a href="desaparecido.html?id=${Number(m.id)}" class="btn btn-outline btn-compact">Ver registro</a></td></tr>`).join('')}</tbody></table></div>`:'<div class="empty-state"><h3>Nenhum animal desaparecido cadastrado.</h3><a href="cadastrar-desaparecido.html" class="btn btn-primary" style="margin-top:12px">Cadastrar desaparecido</a></div>';}
+function activateDonorTab(name,renderer){donorTabs.forEach(tab=>document.getElementById(`tab-${tab}`)?.classList.toggle('active',tab===name));history.replaceState(null,'',`${location.pathname}?tab=${name}`);renderer();}
+document.addEventListener('DOMContentLoaded',()=>{currentUser=Auth.requireAuth();if(!currentUser)return;const renderers={animais:renderAnimaisTab,solicitacoes:renderSolicitacoesTab,desaparecidos:renderDesaparecidosTab,acompanhamentos:renderAcompanhamentosTab};donorTabs.forEach(tab=>document.getElementById(`tab-${tab}`)?.addEventListener('click',()=>activateDonorTab(tab,renderers[tab])));document.getElementById('profile-dialog-close').addEventListener('click',()=>document.getElementById('profile-dialog').close());document.getElementById('reject-dialog-close').addEventListener('click',()=>document.getElementById('reject-dialog').close());document.getElementById('reject-cancel').addEventListener('click',()=>document.getElementById('reject-dialog').close());document.getElementById('reject-confirm').addEventListener('click',submitReject);const initial=donorTabs.includes(getParam('tab'))?getParam('tab'):'animais';activateDonorTab(initial,renderers[initial]);});

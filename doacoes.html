@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Ajude animais a receber tratamento, alimentação e acolhimento. Conheça as campanhas de arrecadação do AdotaPet.">
+  <title>Doe por um pet · AdotaPet</title>
+  <link rel="icon" href="img/brand-symbol.png">
+  <link rel="stylesheet" href="css/style.css?v=20260830-visual1">
+  <link rel="stylesheet" href="css/visual.css?v=20260830-visual1">
+  <link rel="stylesheet" href="css/portal.css?v=20260909-accountflow1">
+  <link rel="stylesheet" href="css/doacoes.css?v=20260927">
+</head>
+<body>
+<a href="#main" class="skip-link">Pular para o conteúdo</a>
+<header class="navbar"></header>
+<main id="main" class="fundraising-page">
+  <div class="container">
+    <section class="fund-hero" aria-labelledby="fund-title">
+      <div class="fund-hero-copy">
+        <span class="eyebrow">Uma rede de pequenos gestos</span>
+        <h1 id="fund-title">Seu carinho pode<br>virar <em>cuidado.</em></h1>
+        <p>Uma consulta, um tratamento, um prato cheio. Ajude a escrever um novo capítulo na vida de um pet.</p>
+        <div class="fund-actions"><a class="btn btn-primary" href="#campanhas">Conhecer campanhas <span data-icon="arrow"></span></a><a class="fund-text-link" href="#como-ajudar">Como funciona</a></div>
+        <div class="fund-hero-note"><span data-icon="heart"></span>Doações via Pix, direto para quem cuida.</div>
+      </div>
+      <div class="fund-hero-image"><img src="img/hero-adocao.jpg" alt="Cão brincando dentro de casa" fetchpriority="high"><div class="fund-image-caption"><span data-icon="paw"></span><span>Cada vida importa.<br><strong>Cada ajuda também.</strong></span></div></div>
+    </section>
+    <div class="fund-totals" aria-label="Resumo das campanhas">
+      <div><span data-icon="heart"></span><p><strong id="fund-active">—</strong><span>campanhas abertas</span></p></div>
+      <div><span data-icon="paw"></span><p><strong id="fund-raised">—</strong><span>arrecadados · total informado</span></p></div>
+      <div><span data-icon="users"></span><p><strong>De pessoa para pet</strong><span>você escolhe quem ajudar</span></p></div>
+    </div>
+    <section id="campanhas" class="fund-section" aria-labelledby="campaigns-heading">
+      <div class="fund-section-head"><div><span class="eyebrow">Ajude uma história a continuar</span><h2 id="campaigns-heading">Campanhas para apoiar</h2></div><button type="button" id="new-campaign" class="btn btn-outline" hidden><span data-icon="plus"></span>Nova campanha</button></div>
+      <div class="fund-filters">
+        <label class="fund-search"><span data-icon="search"></span><span class="sr-only">Buscar campanha ou pet</span><input id="campaign-search" type="search" placeholder="Busque por pet, campanha ou cidade"></label>
+        <label><span class="sr-only">Finalidade</span><select id="campaign-category"><option value="">Todas as causas</option><option value="cirurgia">Cirurgias</option><option value="tratamento">Tratamentos</option><option value="alimentacao">Alimentação</option><option value="acolhimento">Acolhimento</option></select></label>
+        <label><span class="sr-only">Situação</span><select id="campaign-status"><option value="active">Campanhas abertas</option><option value="closed">Encerradas ou pausadas</option><option value="all">Todas</option><option value="draft" id="draft-filter" hidden>Rascunhos</option></select></label>
+      </div>
+      <p id="campaign-count" class="fund-small" role="status"></p>
+      <div id="campaign-results" class="fund-grid" aria-busy="true"><p>Carregando campanhas…</p></div>
+      <div id="campaign-error" role="alert" hidden></div>
+    </section>
+    <section class="fund-how fund-section" id="como-ajudar" aria-labelledby="how-title">
+      <div><span class="eyebrow">Simples, direto e com carinho</span><h2 id="how-title">Como sua ajuda chega</h2><p>Você faz o Pix no aplicativo do seu banco. O AdotaPet conecta você à campanha.</p></div>
+      <ol><li><span>01</span><div><h3>Conheça a história</h3><p>Veja o pet, o motivo da arrecadação e quem é responsável.</p></div></li><li><span>02</span><div><h3>Confira e faça o Pix</h3><p>Copie a chave. Antes de confirmar no banco, confira se o nome do recebedor é o informado na campanha.</p></div></li><li><span>03</span><div><h3>Acompanhe as novidades</h3><p>Os totais e as atualizações são publicados pela administração após contato com o responsável.</p></div></li></ol>
+    </section>
+    <aside class="fund-invite"><span data-icon="paw"></span><div><h2>Conhece um pet que precisa de ajuda?</h2><p>Envie a história e os dados do responsável para a equipe avaliar a campanha.</p></div><a class="btn btn-outline" href="contato.html">Sugerir campanha</a></aside>
+    <p class="fund-disclosure">O AdotaPet não recebe nem processa o dinheiro. As doações são feitas diretamente à ONG ou ao responsável. Os valores arrecadados são informados manualmente e não representam confirmação bancária automática.</p>
+  </div>
+</main>
+<dialog id="donation-dialog" class="fund-dialog" aria-labelledby="donation-title"><div id="donation-detail"></div></dialog>
+<dialog id="campaign-editor" class="fund-dialog fund-editor" aria-labelledby="editor-title">
+  <div class="fund-dialog-head"><div><span class="eyebrow">Administração</span><h2 id="editor-title">Nova campanha</h2></div><button type="button" class="fund-close" id="close-editor" aria-label="Fechar edição">×</button></div>
+  <form id="campaign-form" class="fund-editor-body">
+    <div id="editor-error" role="alert" hidden></div>
+    <div class="form-field"><label for="cf-animal">Pet beneficiado</label><select id="cf-animal" required></select><small>São exibidos os animais com perfil público. O pet não pode ser trocado após criar a campanha.</small></div>
+    <div class="form-field"><label for="cf-title">Título da campanha</label><input id="cf-title" required minlength="5" maxlength="120" placeholder="Ajude a custear o tratamento deste pet"></div>
+    <div class="form-field"><label for="cf-description">História e destino do dinheiro</label><textarea id="cf-description" rows="4" required minlength="30" maxlength="4000" placeholder="Explique a necessidade, o tratamento ou os cuidados e como o dinheiro será utilizado."></textarea></div>
+    <div class="form-row"><div class="form-field"><label for="cf-category">Finalidade</label><select id="cf-category"><option value="tratamento">Tratamento</option><option value="cirurgia">Cirurgia</option><option value="alimentacao">Alimentação</option><option value="acolhimento">Acolhimento</option></select></div><div class="form-field"><label for="cf-status">Situação</label><select id="cf-status"><option value="draft">Rascunho</option><option value="active">Publicada e aberta</option><option value="closed">Encerrada</option></select></div></div>
+    <div class="form-row"><div class="form-field"><label for="cf-goal">Meta (R$)</label><input id="cf-goal" type="number" min="1" max="1000000" step="0.01" required></div><div class="form-field"><label for="cf-raised">Total arrecadado informado (R$)</label><input id="cf-raised" type="number" min="0" max="1000000" step="0.01" required value="0"></div></div>
+    <div class="form-field"><label for="cf-note">Atualização para os apoiadores</label><textarea id="cf-note" maxlength="1000" rows="2" placeholder="Obrigatória ao alterar o total arrecadado. Informe a data da apuração e o avanço dos cuidados."></textarea></div>
+    <fieldset><legend>Responsável e recebimento</legend>
+      <div class="form-field"><label for="cf-organizer">ONG ou responsável pela campanha</label><input id="cf-organizer" required maxlength="120"></div>
+      <div class="form-field"><label for="cf-contact">Contato público (telefone ou e-mail)</label><input id="cf-contact" required maxlength="160"></div>
+      <div class="form-field"><label for="cf-beneficiary">Nome do beneficiário que aparece no banco</label><input id="cf-beneficiary" required maxlength="120"></div>
+      <div class="form-row"><div class="form-field"><label for="cf-key-type">Tipo da chave Pix</label><select id="cf-key-type"><option value="aleatoria">Chave aleatória</option><option value="email">E-mail</option><option value="telefone">Telefone</option><option value="cpf">CPF</option><option value="cnpj">CNPJ</option></select></div><div class="form-field"><label for="cf-key">Chave Pix</label><input id="cf-key" required maxlength="254" autocomplete="off" spellcheck="false"></div></div>
+      <p class="fund-small">A chave ficará pública quando a campanha estiver aberta. Telefone: use +55 e o número com DDD. Prefira uma chave aleatória se não quiser divulgar CPF ou telefone.</p>
+      <label class="fund-consent"><input type="checkbox" id="cf-confirm" required><span>Conferi a chave e o nome do beneficiário com o responsável e tenho autorização para publicá-los.</span></label>
+    </fieldset>
+    <div class="fund-actions"><button type="submit" class="btn btn-primary" id="save-campaign">Salvar campanha</button><button type="button" class="btn btn-ghost" id="cancel-editor">Cancelar</button></div>
+  </form>
+</dialog>
+<script src="js/store.js"></script><script src="js/auth.js"></script><script src="js/icons.js?v=20260830-visual1"></script><script src="js/nav.js?v=20260927"></script><script src="js/pages/doacoes.js?v=20260927"></script>
+</body>
+</html>

@@ -13,7 +13,7 @@ function renderContract() {
       <h2>Compromissos</h2><ol>${contract.clauses.map(c => `<li>${escapeHTML(c)}</li>`).join('')}</ol>
       <div class="contract-signatures"><div><span>Confirmação do responsável</span><b>Registrada em ${new Date(contract.ownerAcknowledgedAt).toLocaleString('pt-BR')}</b></div><div><span>Confirmação do adotante</span><b>${confirmed ? `Registrada em ${new Date(contract.adopterAcknowledgedAt).toLocaleString('pt-BR')}` : 'Pendente'}</b></div></div>
       <p class="legal-note">Este registro documenta a concordância feita dentro da plataforma. Para necessidades jurídicas específicas, procure orientação profissional e adapte o termo à legislação local.</p>
-      <div class="contract-actions no-print">${!confirmed && user.id === contract.adopterId ? '<button class="btn btn-primary" id="confirm-contract">Li e confirmo este termo</button>' : '<span class="alert alert-success">Termo confirmado pelas partes.</span>'}<button class="btn btn-outline" onclick="window.print()">Imprimir ou salvar em PDF</button></div>
+      <div class="contract-actions no-print">${!confirmed && user.id === contract.adopterId ? '<button class="btn btn-primary" id="confirm-contract">Li e confirmo este termo</button>' : '<span class="alert alert-success">Termo confirmado pelas partes.</span>'}<button class="btn btn-outline" data-action="print">Imprimir ou salvar em PDF</button></div>
     </article>`;
     document.getElementById('confirm-contract')?.addEventListener('click', () => { Store.acknowledgeContract(requestId); renderContract(); });
   } catch (err) { el.innerHTML = `<div class="empty-state"><h3>Termo indisponível</h3><p>${escapeHTML(err.message)}</p></div>`; }

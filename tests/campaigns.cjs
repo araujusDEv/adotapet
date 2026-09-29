@@ -1,0 +1,66 @@
+'use strict';
+const assert = require('node:assert/strict');
+const check = require('./start-check.cjs');
+const base = 'http://127.0.0.1:3170';
+function client() {
+  let cookie = '';
+  return async (method, route, body, expected = 200) => {
+    const response = await fetch(base + route, { method, headers: { 'Content-Type': 'application/json', Cookie: cookie }, body: body === undefined ? undefined : JSON.stringify(body) });
+    if (response.headers.get('set-cookie')) cookie = response.headers.get('set-cookie').split(';')[0];
+    const data = await response.json();
+    assert.equal(response.status, expected, `${method} ${route}: ${JSON.stringify(data).slice(0, 250)}`);
+    assert.equal(response.headers.get('x-frame-options'), 'DENY');
+    return data;
+  };
+}
+check('campaign permissions, lifecycle and Pix validation', async () => {
+  const guest = client(), admin = client(), ordinary = client();
+  assert.deepEqual(await guest('GET', '/api/campaigns'), []);
+  await admin('POST', '/api/auth/login', { email: 'admin@adotapet.com', password: 'admin123' });
+  await ordinary('POST', '/api/auth/register', { name: 'Teste', email: 'campaign-user@example.test', password: 'TesteSeguro9', passwordConfirmation: 'TesteSeguro9', accountType: 'usuario', city: 'Apodi', state: 'RN', phone: '84999999999', termsAccepted: true }, 201);
+  const animals = await guest('GET', '/api/animals');
+  const animal = animals.find(a => a.status === 'disponivel');
+  const body = { animalId: animal.id, title: 'Campanha de teste', description: 'Esta campanha fictícia testa a arrecadação para tratamento veterinário.', category: 'tratamento', organizer: 'Organização de teste', beneficiary: 'Beneficiário de teste', contact: 'contato@example.test',
+    pixKeyType: 'aleatoria', pixKey: '00000000-0000-0000-0000-000000000000', recipientConfirmed: true, goalCents: 250000, raisedCents: 0, status: 'draft' };
+  await guest('POST', '/api/campaigns', body, 401);
+  await ordinary('POST', '/api/campaigns', body, 403);
+  const draft = await admin('POST', '/api/campaigns', { ...body, createdBy: 999, updates: [{ raisedCents: 1000000 }] }, 201);
+  assert.notEqual(draft.createdBy, 999);
+  assert.deepEqual(draft.updates, []);
+  assert.deepEqual(await guest('GET', '/api/campaigns'), []);
+  await ordinary('PATCH', `/api/campaigns/${draft.id}`, { status: 'active', revision: 1 }, 403);
+  const active = await admin('PATCH', `/api/campaigns/${draft.id}`, { status: 'active', revision: 1 });
+  let publicCampaign = (await guest('GET', '/api/campaigns'))[0];
+  assert.equal(publicCampaign.pixKey, body.pixKey);
+  assert.equal(publicCampaign.canDonate, true);
+  assert.equal(publicCampaign.createdBy, undefined);
+  await admin('PATCH', `/api/campaigns/${draft.id}`, { raisedCents: 50000, revision: 1, progressNote: 'Tentativa de atualização antiga' }, 409);
+  await admin('PATCH', `/api/campaigns/${draft.id}`, { raisedCents: -1, revision: active.revision }, 400);
+  await admin('PATCH', `/api/campaigns/${draft.id}`, { raisedCents: 100.5, revision: active.revision }, 400);
+  await admin('PATCH', `/api/campaigns/${draft.id}`, { raisedCents: 50000, revision: active.revision }, 400);
+  const progress = await admin('PATCH', `/api/campaigns/${draft.id}`, { raisedCents: 50000, progressNote: 'Total informado pelo responsável após conferência dos recebimentos.', revision: active.revision, animalId: 9999 });
+  assert.equal(progress.animalId, animal.id);
+  assert.equal(progress.updates.length, 1);
+  assert.equal(progress.updates[0].raisedCents, 50000);
+  await admin('PATCH', `/api/campaigns/${draft.id}`, { pixKey: '11111111-1111-1111-1111-111111111111', revision: progress.revision }, 400);
+  await admin('POST', '/api/campaigns', { ...body, goalCents: 1.5 }, 400);
+  await admin('POST', '/api/campaigns', { ...body, pixKeyType: 'link', pixKey: 'javascript:alert(1)' }, 400);
+  await admin('POST', '/api/campaigns', { ...body, recipientConfirmed: false }, 400);
+  await admin('POST', '/api/campaigns', { ...body, animalId: 9999 }, 400);
+  const privateAnimal = await ordinary('POST', '/api/animals', { name: 'Animal privado', city: 'Apodi', state: 'RN' }, 201);
+  await admin('POST', '/api/campaigns', { ...body, animalId: privateAnimal.id }, 400);
+  await admin('PATCH', `/api/animals/${animal.id}`, { status: 'indisponivel' });
+  publicCampaign = (await guest('GET', '/api/campaigns'))[0];
+  assert.equal(publicCampaign.canDonate, false);
+  assert.equal(publicCampaign.pixKey, '');
+  await admin('PATCH', `/api/animals/${animal.id}`, { status: 'disponivel' });
+  assert.equal((await guest('GET', '/api/campaigns'))[0].raisedCents, 50000);
+  const closed = await admin('PATCH', `/api/campaigns/${draft.id}`, { status: 'closed', revision: progress.revision });
+  assert.equal(closed.status, 'closed');
+  assert.equal((await guest('GET', '/api/campaigns'))[0].pixKey, '');
+  const log = await admin('GET', '/api/admin-log');
+  assert.ok(log.some(entry => entry.message.includes('campanha')));
+  const html = await fetch(base + '/doacoes.html'); assert.equal(html.status, 200);
+  assert.ok(html.headers.get('content-security-policy').includes("script-src 'self'"));
+  console.log('OK — only admins publish/edit; drafts private; Pix consent, money, revisions, totals and closed campaigns checked.');
+}).catch(error => { console.error(error); process.exitCode = 1; });

@@ -414,5 +414,87 @@
       "ownerId": 2,
       "seed": true
     }
+  ],
+  "supportPoints": [
+    {
+      "id": 1,
+      "seedKey": "ufersa-hovet-mossoro",
+      "name": "Hospital Veterinário Jerônimo Dix-Huit Rosado Maia — UFERSA",
+      "category": "veterinario",
+      "city": "Mossoró",
+      "state": "RN",
+      "address": "Av. Francisco Mota, 572, Campus Oeste, Costa e Silva",
+      "contact": "Telefone: (84) 3317-8310",
+      "services": "Atendimento médico-veterinário à comunidade. Confirme triagem, horários, valores e disponibilidade antes de ir.",
+      "verified": true,
+      "sourceUrl": "https://prmv.ufersa.edu.br/",
+      "sourceCheckedAt": "2026-09-09",
+      "createdAt": "2026-09-09T00:00:00.000Z",
+      "seed": true
+    },
+    {
+      "id": 2,
+      "seedKey": "uvz-mossoro",
+      "name": "Unidade de Vigilância de Zoonoses de Mossoró",
+      "category": "zoonoses",
+      "city": "Mossoró",
+      "state": "RN",
+      "address": "Rua Dr. Moisés da Costa Lopes, bairro Nova Betânia",
+      "contact": "Telefone: (84) 2140-0753 · WhatsApp: (84) 98849-4027",
+      "services": "Canal municipal para orientações, denúncias e dúvidas relacionadas às zoonoses e arboviroses. Confirme o atendimento antes de ir.",
+      "verified": true,
+      "sourceUrl": "https://prefeiturademossoro.com.br/noticias/disque-dengue-centro-de-zoonoses-dispoe-de-canal-para-comunicacao-com-a-populacao-de-mossoro/13408",
+      "sourceCheckedAt": "2026-09-09",
+      "createdAt": "2026-09-09T00:00:00.000Z",
+      "seed": true
+    },
+    {
+      "id": 3,
+      "seedKey": "uvz-natal",
+      "name": "Unidade de Vigilância de Zoonoses de Natal",
+      "category": "zoonoses",
+      "city": "Natal",
+      "state": "RN",
+      "address": "Rua Sebastião Pinto, 880, Nova Descoberta, CEP 59056-430",
+      "contact": "Telefone: (84) 3232-8238 · WhatsApp: (84) 3232-8235",
+      "services": "Orientações e ações de vigilância, prevenção e controle de zoonoses. Confirme o tipo de atendimento antes de se deslocar.",
+      "verified": true,
+      "sourceUrl": "https://www2.natal.rn.gov.br/_anexos/boletimdengue/boletim_dengue_a17n39.pdf",
+      "sourceCheckedAt": "2026-09-09",
+      "createdAt": "2026-09-09T00:00:00.000Z",
+      "seed": true
+    },
+    {
+      "id": 4,
+      "seedKey": "ccz-parnamirim",
+      "name": "Unidade de Vigilância em Zoonoses de Parnamirim",
+      "category": "zoonoses",
+      "city": "Parnamirim",
+      "state": "RN",
+      "address": "Rua Jardim Blumenau, s/n, Cajupiranga, CEP 59156-710",
+      "contact": "Telefone: (84) 3644-8185",
+      "services": "Atendimento municipal relacionado à vigilância e ao controle de zoonoses. Confirme serviços e horários antes de ir.",
+      "verified": true,
+      "sourceUrl": "https://sesad.parnamirim.rn.gov.br/unidades.html",
+      "sourceCheckedAt": "2026-09-09",
+      "createdAt": "2026-09-09T00:00:00.000Z",
+      "seed": true
+    },
+    {
+      "id": 5,
+      "seedKey": "uvz-currais-novos",
+      "name": "Unidade de Vigilância em Zoonoses de Currais Novos",
+      "category": "zoonoses",
+      "city": "Currais Novos",
+      "state": "RN",
+      "address": "BR-226, sentido São Vicente, após a indústria de cimento ELO",
+      "contact": "Telefone: (84) 98790-1437 · E-mail: zoonosessemsacn@gmail.com",
+      "services": "Prevenção de zoonoses, educação em saúde, visitas técnicas, castrações e atendimento veterinário. Confirme a agenda antes de ir.",
+      "verified": true,
+      "sourceUrl": "https://curraisnovos.rn.gov.br/secretarias/semsa-2/",
+      "sourceCheckedAt": "2026-09-09",
+      "createdAt": "2026-09-09T00:00:00.000Z",
+      "seed": true
+    }
   ]
 }

@@ -15,12 +15,11 @@ function renderFeatured() {
 function renderStats() {
   if (!document.getElementById('stat-animais')) return;
   const animals = Store.getAnimals();
-  const users = Store.getUsers();
   const publicStats = Store.getPublicStats();
   document.getElementById('stat-animais').textContent = Number(publicStats.available) || 0;
   document.getElementById('stat-adocoes').textContent = Number(publicStats.completedAdoptions) || animals.filter(a => a.status === 'adotado').length;
-  document.getElementById('stat-usuarios').textContent = users.length;
-  document.getElementById('stat-ongs').textContent = users.filter(u => u.role === 'doador').length;
+  document.getElementById('stat-usuarios').textContent = Number(publicStats.users) || 0;
+  document.getElementById('stat-ongs').textContent = Number(publicStats.organizations) || 0;
 }
 
 function renderRecommended() {

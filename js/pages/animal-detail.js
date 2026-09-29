@@ -14,7 +14,7 @@ function renderAnimalDetail(trackView = true) {
     try { Store.incrementAnimalView(animal.id); } catch { /* visualização não deve impedir a página de abrir */ }
   }
 
-  const owner = Store.getUsers().find(u => u.id === animal.ownerId);
+  const owner = Store.getAnimalOwnerName(animal.id);
   const photos = Array.isArray(animal.photos) ? animal.photos.map(safeImageSrc).filter(Boolean) : [];
   setRecordMetadata(`${animal.name} · AdotaPet`, `${animal.name} em ${animal.city}. ${animal.description || 'Conheça este animal no AdotaPet.'}`, photos[0]);
   currentAnimalPhotos = photos;
@@ -49,7 +49,7 @@ function renderAnimalDetail(trackView = true) {
           ${photos[0] ? `<img src="${escapeAttr(photos[0])}" alt="${escapeAttr(animal.name)}" style="width:100%;height:100%;object-fit:cover;">` : '<div class="no-photo">Sem foto</div>'}
           ${favoriteButtonHTML(animal.id, isFav)}
         </div>
-        ${photos.length > 1 ? `<div class="gallery-thumbs">${photos.map((p, i) => `<img src="${escapeAttr(p)}" alt="Foto de ${escapeAttr(animal.name)}" class="${i === 0 ? 'active' : ''}" onclick="setActivePhoto(${i})">`).join('')}</div>` : ''}
+        ${photos.length > 1 ? `<div class="gallery-thumbs">${photos.map((p, i) => `<img src="${escapeAttr(p)}" alt="Foto de ${escapeAttr(animal.name)}" class="${i === 0 ? 'active' : ''}" data-action="setActivePhoto" data-arg-0="${i}">`).join('')}</div>` : ''}
       </div>
       <div>
         <span class="eyebrow">${animal.species === 'cachorro' ? 'Cão' : 'Gato'} · ${escapeHTML(animal.city)}/${escapeHTML(animal.state)}${animal.neighborhood ? ' — ' + escapeHTML(animal.neighborhood) : ''}</span>
